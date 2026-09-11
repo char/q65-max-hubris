@@ -1,0 +1,16 @@
+[usb]
+address = 0x50000000
+size = 0x40000
+interrupts = { irq = 67 }
+
+[gpio]
+address = 0x40020000
+size = 4096
+
+[gpiob]
+address = 0x40020400
+size = 1024
+
+[spi1]
+address = 0x40013000
+size = 1024

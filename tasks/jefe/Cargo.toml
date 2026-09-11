@@ -1,0 +1,15 @@
+[package]
+name = "jefe"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+userlib.workspace = true
+
+[[bin]]
+name = "jefe"
+test = false
+bench = false

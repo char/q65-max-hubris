@@ -1,0 +1,27 @@
+[workspace]
+members = ["firmware/kernel", "lib/*", "tasks/*", "tools/xtask"]
+default-members = ["lib/*"]
+resolver = "2"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+
+[workspace.dependencies]
+kern = { git = "https://github.com/oxidecomputer/hubris", rev = "a404d696a78fb14a8d6dba1af48759ba857c792c" }
+userlib = { git = "https://github.com/oxidecomputer/hubris", rev = "a404d696a78fb14a8d6dba1af48759ba857c792c" }
+xtask = { git = "https://github.com/oxidecomputer/hubris", rev = "a404d696a78fb14a8d6dba1af48759ba857c792c" }
+
+cortex-m = { version = "0.7", features = ["inline-asm"] }
+cortex-m-rt = "0.6.12"
+stm32f4 = { version = "0.13.0", default-features = false, features = ["stm32f401"] }
+
+[profile.release]
+codegen-units = 1
+debug = 2
+lto = true
+opt-level = "z"
+
+[patch.crates-io]
+# hubris needs this fork, see https://gitlab.com/robigalia/ssmarshal/-/merge_requests/2
+ssmarshal = { git = "https://gitlab.com/de-vri-es/ssmarshal", rev = "10e90cbe389c8f07c52815857551a051946881ab" }

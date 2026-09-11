@@ -1,0 +1,1 @@
+# we don't need a board config because we load through the board's pre-existing bootloader

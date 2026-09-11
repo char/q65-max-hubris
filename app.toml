@@ -1,0 +1,24 @@
+name = "q65-max"
+target = "thumbv7em-none-eabihf"
+board = "q65-max"
+chip = "chips/stm32f401"
+stacksize = 1024
+
+[kernel]
+name = "kernel"
+requires = { flash = 24576, ram = 4096 }
+
+[tasks.jefe]
+name = "jefe"
+priority = 0
+start = true
+stacksize = 512
+max-sizes = { flash = 4096, ram = 1024 }
+notifications = ["fault"]
+
+[tasks.idle]
+name = "idle"
+priority = 1
+start = true
+stacksize = 256
+max-sizes = { flash = 256, ram = 256 }

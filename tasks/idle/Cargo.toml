@@ -1,0 +1,16 @@
+[package]
+name = "idle"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+cortex-m.workspace = true
+userlib.workspace = true
+
+[[bin]]
+name = "idle"
+test = false
+bench = false
