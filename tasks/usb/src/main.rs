@@ -5,7 +5,7 @@
 
 mod otg;
 
-use hid::Reports;
+use hid::{LedReport, Reports};
 use idol_runtime::{NotificationHandler, RequestError};
 use otg::{Event, Otg};
 use stm32f4::stm32f401 as pac;
@@ -31,6 +31,7 @@ fn main() -> ! {
         otg: Otg::new(),
         device: Device::default(),
         pending: [Pending::default(); 2],
+        suspended: false,
     };
     let mut incoming = [0; idl::INCOMING_SIZE];
     sys_irq_control(notifications::USB_IRQ_MASK, true);
@@ -49,6 +50,20 @@ impl idl::InOrderUsbImpl for Usb {
     ) -> Result<(), RequestError<core::convert::Infallible>> {
         self.set_reports(reports);
         Ok(())
+    }
+
+    fn is_awake(
+        &mut self,
+        _: &RecvMessage,
+    ) -> Result<bool, RequestError<core::convert::Infallible>> {
+        Ok(self.device.configured() && !self.suspended)
+    }
+
+    fn leds(
+        &mut self,
+        _: &RecvMessage,
+    ) -> Result<LedReport, RequestError<core::convert::Infallible>> {
+        Ok(self.device.leds())
     }
 }
 
@@ -69,6 +84,7 @@ struct Usb {
     otg: Otg,
     device: Device,
     pending: [Pending; 2],
+    suspended: bool,
 }
 
 /// One report transfer may be in flight per interface. Changes that arrive meanwhile are coalesced
@@ -86,6 +102,7 @@ impl Usb {
             Event::Reset => {
                 self.device.reset();
                 self.pending = [Pending::default(); 2];
+                self.suspended = false;
             }
             Event::Setup(setup) => {
                 let action = self.device.setup(setup);
@@ -103,7 +120,8 @@ impl Usb {
                     }
                 }
             }
-            Event::Suspend | Event::Resume => {}
+            Event::Suspend => self.suspended = true,
+            Event::Resume => self.suspended = false,
         }
     }
 
@@ -181,7 +199,7 @@ impl Usb {
 }
 
 mod idl {
-    use hid::Reports;
+    use hid::{LedReport, Reports};
 
     include!(concat!(env!("OUT_DIR"), "/server_stub.rs"));
 }

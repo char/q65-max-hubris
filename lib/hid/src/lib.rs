@@ -79,7 +79,10 @@ pub struct Reports {
 }
 
 /// 1 bit per `Led`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, IntoBytes, FromBytes, Immutable, KnownLayout,
+)]
+#[repr(transparent)]
 pub struct LedReport(pub u8);
 
 impl LedReport {

@@ -9,5 +9,15 @@ Interface(
             reply: Simple("()"),
             idempotent: true,
         ),
+        "is_awake": (
+            doc: "Whether a host is configured and not suspended, i.e. whether anyone can see the lights.",
+            reply: Simple("bool"),
+            idempotent: true,
+        ),
+        "leds": (
+            doc: "The lock-key LED state the host most recently set.",
+            reply: Simple("LedReport"),
+            idempotent: true,
+        ),
     },
 )
