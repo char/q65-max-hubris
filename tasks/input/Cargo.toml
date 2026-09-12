@@ -9,6 +9,7 @@ workspace = true
 [dependencies]
 cortex-m.workspace = true
 idol-runtime.workspace = true
+jefe-api = { path = "../../lib/jefe-api" }
 keyboard = { path = "../../lib/keyboard" }
 num-traits.workspace = true
 usb-api = { path = "../../lib/usb-api" }

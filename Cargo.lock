@@ -263,6 +263,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "board"
+version = "0.1.0"
+
+[[package]]
 name = "bs58"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1556,6 +1560,7 @@ dependencies = [
  "cortex-m",
  "idol",
  "idol-runtime",
+ "jefe-api",
  "keyboard",
  "num-traits",
  "usb-api",
@@ -1600,6 +1605,16 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jefe"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "jefe-api",
+ "userlib",
+ "util",
+]
+
+[[package]]
+name = "jefe-api"
 version = "0.1.0"
 dependencies = [
  "userlib",
@@ -1718,6 +1733,7 @@ source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af4
 name = "kernel"
 version = "0.1.0"
 dependencies = [
+ "board",
  "cortex-m",
  "cortex-m-rt",
  "kern",

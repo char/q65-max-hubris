@@ -4,7 +4,14 @@
 use stm32f4::stm32f401 as pac;
 
 #[cortex_m_rt::pre_init]
-unsafe fn bootloader_handoff() {
+unsafe fn pre_init() {
+    // clear the bootloader reset flag
+    let flag = board::REBOOT_FLAG as *mut u32;
+    if unsafe { flag.read_volatile() } == board::ENTER_BOOTLOADER {
+        unsafe { flag.write_volatile(0) };
+        enter_bootloader();
+    }
+
     // clean up interrupts left by the DFU ROM
     // look at my sending-the-system-backwards bro we're never getting holistic boot
     cortex_m::interrupt::disable();
@@ -25,6 +32,16 @@ unsafe fn bootloader_handoff() {
     }
     cortex_m::asm::dsb();
     cortex_m::asm::isb();
+}
+
+/// hop
+fn enter_bootloader() -> ! {
+    const SYSTEM_MEMORY: *const u32 = 0x1fff_0000 as *const u32;
+    unsafe {
+        let stack = SYSTEM_MEMORY.read_volatile();
+        let entry = SYSTEM_MEMORY.add(1).read_volatile();
+        cortex_m::asm::bootstrap(stack as *const u32, entry as *const u32)
+    }
 }
 
 /// configure the clocks for the board - we match the clock tree of the qmk impl for ease

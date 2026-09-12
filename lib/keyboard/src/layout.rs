@@ -16,7 +16,7 @@ pub enum Layer {
     FKey,
 }
 
-use Binding::{Key as Kc, Media, Mo, TapHold, Tg};
+use Binding::{Bootloader, Key as Kc, Media, Mo, TapHold, Tg};
 use Layer::{Ext, FKey, Nav};
 
 impl Layer {
@@ -72,6 +72,7 @@ const EXT: Grid = layer(
         (Kc(A), Kc(Home)),
         (Kc(S), Kc(PageDown)),
         (Kc(D), Kc(End)),
+        (Kc(F22), Bootloader),
     ],
 );
 

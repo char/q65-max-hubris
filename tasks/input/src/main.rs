@@ -4,10 +4,11 @@
 mod matrix;
 
 use idol_runtime::{NotificationHandler, RequestError};
-use keyboard::{Debouncer, Encoder, Keymap, Matrix};
+use keyboard::{Command, Debouncer, Encoder, Keymap, Matrix};
 use usb_api::{Reports, Usb};
 use userlib::{RecvMessage, sys_get_timer, sys_set_timer, task_slot};
 
+task_slot!(JEFE, jefe);
 task_slot!(USB, usb);
 
 #[unsafe(export_name = "main")]
@@ -46,7 +47,9 @@ impl NotificationHandler for Input {
         let start = sys_get_timer().now;
         self.keys = self.debouncer.update(matrix::scan(), start);
         let send = |reports: Reports| self.usb.set_reports(reports);
-        self.keymap.update(self.keys, start, send);
+        if let Some(Command::EnterBootloader) = self.keymap.update(self.keys, start, send) {
+            jefe_api::enter_bootloader(JEFE.get_task_id());
+        }
         if let Some(rotation) = self.encoder.update(matrix::encoder_state()) {
             self.keymap.turn(rotation, send);
         }

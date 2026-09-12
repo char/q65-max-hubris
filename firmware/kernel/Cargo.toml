@@ -10,6 +10,7 @@ workspace = true
 cortex-m.workspace = true
 cortex-m-rt.workspace = true
 stm32f4 = { workspace = true, features = ["rt"] }
+board = { path = "../../lib/board" }
 kern.workspace = true
 
 [[bin]]

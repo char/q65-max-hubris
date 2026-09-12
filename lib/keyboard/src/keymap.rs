@@ -17,6 +17,13 @@ pub enum Binding {
     Tg(Layer),
     /// key when tapped, layer while held (200ms)
     TapHold(Key, Layer),
+    Bootloader,
+}
+
+/// Something for the task to do that isn't a report.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Command {
+    EnterBootloader,
 }
 
 use Binding::{Key as Kc, Media, Mo, TapHold, Tg};
@@ -61,7 +68,9 @@ const fn same(a: Binding, b: Binding) -> bool {
         (Media(a), Media(b)) => a as u8 == b as u8,
         (Mo(a), Mo(b)) | (Tg(a), Tg(b)) => a as u8 == b as u8,
         (TapHold(a, x), TapHold(b, y)) => a as u8 == b as u8 && x as u8 == y as u8,
-        (Binding::Empty, Binding::Empty) | (Binding::Transparent, Binding::Transparent) => true,
+        (Binding::Empty, Binding::Empty)
+        | (Binding::Transparent, Binding::Transparent)
+        | (Binding::Bootloader, Binding::Bootloader) => true,
         _ => false,
     }
 }
@@ -110,6 +119,7 @@ pub struct Keymap {
     // undecided tap/hold key
     pending: Option<Pending>,
     buffered: Buffered,
+    command: Option<Command>,
 }
 
 impl Default for Keymap {
@@ -120,6 +130,7 @@ impl Default for Keymap {
             toggled: [false; Layer::ALL.len()],
             pending: None,
             buffered: Buffered::default(),
+            command: None,
         }
     }
 }
@@ -173,6 +184,7 @@ impl Keymap {
                     }
                 }
             }
+            Binding::Bootloader if event.pressed => self.command = Some(Command::EnterBootloader),
             _ => {}
         }
     }
@@ -225,7 +237,12 @@ impl Keymap {
         self.apply(event);
     }
 
-    pub fn update(&mut self, matrix: Matrix, now: u64, mut emit: impl FnMut(Reports)) {
+    pub fn update(
+        &mut self,
+        matrix: Matrix,
+        now: u64,
+        mut emit: impl FnMut(Reports),
+    ) -> Option<Command> {
         let mut last = self.report();
         let mut emit = |report: Reports| {
             if report != last {
@@ -247,6 +264,7 @@ impl Keymap {
         }
         self.previous = matrix;
         emit(self.report());
+        self.command.take()
     }
 
     pub fn turn(&self, rotation: Rotation, mut emit: impl FnMut(Reports)) {
@@ -273,6 +291,7 @@ mod tests {
     const CAPS: (usize, usize) = (2, 1);
     const A_KEY: (usize, usize) = (2, 2);
     const NAV_KEY: (usize, usize) = (4, 11);
+    const F22_KEY: (usize, usize) = (4, 0);
 
     fn keys(keys: &[Key]) -> Reports {
         let mut reports = Reports::default();
@@ -365,6 +384,22 @@ mod tests {
         scan(&mut keymap, &[NAV_KEY], 4);
         scan(&mut keymap, &[], 5);
         assert_eq!(scan(&mut keymap, &[Q_KEY], 6), [keys(&[Q])]);
+    }
+
+    #[test]
+    fn the_bootloader_key_is_a_command_not_a_report() {
+        let mut keymap = Keymap::default();
+        scan(&mut keymap, &[NAV_KEY], 0);
+        scan(&mut keymap, &[NAV_KEY, CAPS], 1);
+        scan(&mut keymap, &[NAV_KEY], 2);
+        let mut matrix = Matrix::default();
+        matrix[NAV_KEY.0] |= 1 << NAV_KEY.1;
+        matrix[F22_KEY.0] |= 1 << F22_KEY.1;
+        let mut emitted = Vec::new();
+        let command = keymap.update(matrix, 3, |report| emitted.push(report));
+        assert_eq!(command, Some(Command::EnterBootloader));
+        assert_eq!(emitted, []);
+        assert_eq!(scan(&mut keymap, &[F22_KEY], 4), []);
     }
 
     #[test]

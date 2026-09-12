@@ -4,7 +4,7 @@ mod keymap;
 mod layout;
 pub mod lighting;
 
-pub use keymap::Keymap;
+pub use keymap::{Command, Keymap};
 
 pub const ROWS: usize = 5;
 pub const COLUMNS: usize = 16;

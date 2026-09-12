@@ -18,3 +18,8 @@ size = 1024
 [spi1]
 address = 0x40013000
 size = 1024
+
+# SRAM kept out of the memory map so that a word written there survives a reset (see `board`).
+[reboot-flag]
+address = 0x2000ff00
+size = 256
