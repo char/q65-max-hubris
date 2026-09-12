@@ -1,7 +1,3 @@
-//! Rows are inputs with pull-ups. Columns idle as inputs too, and are scanned by turning them into
-//! low outputs one at a time; a row reading low then means the switch at that intersection is
-//! closed. Idling columns rather than driving them high means two keys on different columns can't
-//! ever connect two driven pins.
 use keyboard::{COLUMNS, Matrix, ROWS};
 use util::Reg;
 
@@ -52,6 +48,7 @@ const BSRR: usize = 0x18;
 const INPUT: u32 = 0b00;
 const OUTPUT: u32 = 0b01;
 const PULL_UP: u32 = 0b01;
+const OPEN_DRAIN: u32 = 1;
 
 impl Pin {
     fn reg(self, offset: usize) -> Reg {
@@ -67,6 +64,14 @@ impl Pin {
     fn is_low(self) -> bool {
         self.reg(IDR).read() & 1 << self.1 == 0
     }
+
+    fn drive_low(self) {
+        self.reg(BSRR).write(1 << (self.1 + 16));
+    }
+
+    fn release(self) {
+        self.reg(BSRR).write(1 << self.1);
+    }
 }
 
 pub fn init() {
@@ -75,25 +80,24 @@ pub fn init() {
         pin.field(PUPDR, PULL_UP);
     }
     for pin in COLUMN_PINS {
-        // Preset low, push-pull, so becoming an output means pulling the column down. Slowest slew:
-        // PC13–PC15 have weak drivers and none of this needs to be fast.
-        pin.reg(BSRR).write(1 << (pin.1 + 16));
-        pin.reg(OTYPER).modify(|bits| bits & !(1 << pin.1));
+        pin.release();
+        pin.reg(OTYPER).modify(|bits| bits | OPEN_DRAIN << pin.1);
         pin.field(OSPEEDR, 0);
+        pin.field(MODER, OUTPUT);
     }
 }
 
 pub fn scan() -> Matrix {
     let mut matrix = Matrix::default();
     for (column, pin) in COLUMN_PINS.into_iter().enumerate() {
-        pin.field(MODER, OUTPUT);
+        pin.drive_low();
         settle();
         for (row, pin) in ROW_PINS.into_iter().enumerate() {
             if pin.is_low() {
                 matrix[row] |= 1 << column;
             }
         }
-        pin.field(MODER, INPUT);
+        pin.release();
         settle();
     }
     matrix
