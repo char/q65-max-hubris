@@ -2,6 +2,7 @@
 
 mod keymap;
 mod layout;
+pub mod lighting;
 
 pub use keymap::Keymap;
 
