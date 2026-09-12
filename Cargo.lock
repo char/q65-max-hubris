@@ -1698,6 +1698,9 @@ dependencies = [
 [[package]]
 name = "keyboard"
 version = "0.1.0"
+dependencies = [
+ "hid",
+]
 
 [[package]]
 name = "lazy_static"

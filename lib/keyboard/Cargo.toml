@@ -7,3 +7,4 @@ edition = "2024"
 workspace = true
 
 [dependencies]
+hid = { path = "../hid" }
