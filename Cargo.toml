@@ -13,6 +13,7 @@ userlib = { git = "https://github.com/oxidecomputer/hubris", rev = "a404d696a78f
 xtask = { git = "https://github.com/oxidecomputer/hubris", rev = "a404d696a78fb14a8d6dba1af48759ba857c792c" }
 
 cortex-m = { version = "0.7", features = ["inline-asm"] }
+zerocopy = { version = "0.8", default-features = false, features = ["derive"] }
 cortex-m-rt = "0.6.12"
 stm32f4 = { version = "0.13.0", default-features = false, features = ["stm32f401"] }
 

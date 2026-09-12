@@ -1289,6 +1289,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
+name = "hid"
+version = "0.1.0"
+dependencies = [
+ "zerocopy",
+]
+
+[[package]]
 name = "hubtools"
 version = "0.4.9"
 source = "git+https://github.com/oxidecomputer/hubtools#87881bd389025f7c5692c0be153452c11ae3312e"
