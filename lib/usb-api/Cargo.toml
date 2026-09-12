@@ -1,5 +1,5 @@
 [package]
-name = "usb"
+name = "usb-api"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,21 +7,15 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-hid = { path = "../../lib/hid" }
-idol-runtime.workspace = true
+hid = { path = "../hid" }
 num-traits.workspace = true
-stm32f4.workspace = true
-usb-device = { path = "../../lib/usb-device" }
 userlib.workspace = true
-util = { path = "../../lib/util" }
 zerocopy.workspace = true
 zerocopy-derive.workspace = true
 
 [build-dependencies]
-build-util.workspace = true
 idol.workspace = true
 
-[[bin]]
-name = "usb"
+[lib]
 test = false
-bench = false
+doctest = false

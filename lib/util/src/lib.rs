@@ -41,3 +41,27 @@ impl<const N: usize> Bytes<N> {
         self.bytes
     }
 }
+
+/// A memory-mapped 32-bit register at a fixed address, for where the PAC gets in the way: registers
+/// it doesn't know about, or ones that need addressing by index rather than by name.
+#[derive(Clone, Copy)]
+pub struct Reg(pub usize);
+
+impl Reg {
+    #[must_use]
+    pub fn read(self) -> u32 {
+        unsafe { core::ptr::read_volatile(self.0 as *const u32) }
+    }
+
+    pub fn write(self, value: u32) {
+        unsafe { core::ptr::write_volatile(self.0 as *mut u32, value) }
+    }
+
+    pub fn modify(self, f: impl FnOnce(u32) -> u32) {
+        self.write(f(self.read()));
+    }
+
+    pub fn set(self, bits: u32) {
+        self.modify(|value| value | bits);
+    }
+}

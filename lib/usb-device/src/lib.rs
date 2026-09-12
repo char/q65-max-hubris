@@ -38,10 +38,18 @@ impl Interface {
         Self::ALL.get(usize::from(number)).copied()
     }
 
-    fn from_endpoint(address: u16) -> Option<Self> {
+    #[must_use]
+    pub fn for_endpoint(endpoint: u8) -> Option<Self> {
         Self::ALL
             .into_iter()
-            .find(|interface| address == 0x80 | u16::from(interface.endpoint()))
+            .find(|interface| interface.endpoint() == endpoint)
+    }
+
+    fn from_endpoint_address(address: u16) -> Option<Self> {
+        let [number, high] = address.to_le_bytes();
+        (high == 0 && number & 0x80 != 0)
+            .then(|| Self::for_endpoint(number & 0x7f))
+            .flatten()
     }
 }
 
@@ -242,7 +250,7 @@ impl Device {
             }
             (Recipient::Interface, SET_INTERFACE) if self.configured => STATUS,
             (Recipient::Endpoint, CLEAR_FEATURE) if setup.value == ENDPOINT_HALT => {
-                match Interface::from_endpoint(setup.index) {
+                match Interface::from_endpoint_address(setup.index) {
                     Some(interface) if self.configured => Action::ResetEndpoint(interface),
                     _ => Action::Stall,
                 }

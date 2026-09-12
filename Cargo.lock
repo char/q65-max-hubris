@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "abi"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "bitflags 2.13.2",
  "byteorder",
@@ -110,7 +110,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "armv6m-atomic-hack"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "build-util",
 ]
@@ -118,7 +118,7 @@ dependencies = [
 [[package]]
 name = "armv8-m-mpu"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "cortex-m",
 ]
@@ -280,7 +280,7 @@ checksum = "bd769563b4ea2953e2825c9e6b7470a5f55f67e0be00030bf3e390a2a6071f64"
 [[package]]
 name = "build-elf"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
  "goblin",
@@ -290,7 +290,7 @@ dependencies = [
 [[package]]
 name = "build-fpga-regmap"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
  "build-util",
@@ -307,7 +307,7 @@ dependencies = [
 [[package]]
 name = "build-i2c"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
  "build-util",
@@ -325,7 +325,7 @@ dependencies = [
 [[package]]
 name = "build-kconfig"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "bitflags 2.13.2",
  "serde",
@@ -334,7 +334,7 @@ dependencies = [
 [[package]]
 name = "build-stack"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
  "build-elf",
@@ -347,7 +347,7 @@ dependencies = [
 [[package]]
 name = "build-util"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
  "indexmap 1.9.3",
@@ -392,7 +392,7 @@ dependencies = [
 [[package]]
 name = "call_rustfmt"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
 ]
@@ -693,6 +693,25 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "counters"
+version = "0.1.0"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
+dependencies = [
+ "armv6m-atomic-hack",
+ "counters-derive",
+]
+
+[[package]]
+name = "counters-derive"
+version = "0.1.0"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1179,7 +1198,7 @@ checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 [[package]]
 name = "gnarle"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 
 [[package]]
 name = "goblin"
@@ -1481,6 +1500,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "idol"
+version = "0.6.0"
+source = "git+https://github.com/oxidecomputer/idolatry.git?rev=5b8da783597badc97ef554d86753aba3b89dbd01#5b8da783597badc97ef554d86753aba3b89dbd01"
+dependencies = [
+ "indexmap 1.9.3",
+ "once_cell",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "ron",
+ "serde",
+ "serde_with",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "idol-runtime"
+version = "0.3.0"
+source = "git+https://github.com/oxidecomputer/idolatry.git?rev=5b8da783597badc97ef554d86753aba3b89dbd01#5b8da783597badc97ef554d86753aba3b89dbd01"
+dependencies = [
+ "counters",
+ "userlib",
+ "zerocopy",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1608,7 +1653,7 @@ dependencies = [
 [[package]]
 name = "kern"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "abi",
  "anyhow",
@@ -1638,7 +1683,7 @@ dependencies = [
 [[package]]
 name = "kerncore"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 
 [[package]]
 name = "kernel"
@@ -1717,7 +1762,7 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 [[package]]
 name = "lpc55-rom-data"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 
 [[package]]
 name = "lpc55_areas"
@@ -2058,12 +2103,12 @@ dependencies = [
 [[package]]
 name = "phash"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 
 [[package]]
 name = "phash-gen"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
  "phash",
@@ -3041,7 +3086,7 @@ dependencies = [
 [[package]]
 name = "toml-patch"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
  "toml_edit 0.23.10+spec-1.0.0",
@@ -3050,7 +3095,7 @@ dependencies = [
 [[package]]
 name = "toml-task"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "anyhow",
  "indexmap 1.9.3",
@@ -3166,7 +3211,7 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "unwrap-lite"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 
 [[package]]
 name = "url"
@@ -3184,8 +3229,29 @@ dependencies = [
 name = "usb"
 version = "0.1.0"
 dependencies = [
+ "build-util",
+ "hid",
+ "idol",
+ "idol-runtime",
+ "num-traits",
  "stm32f4",
+ "usb-device",
  "userlib",
+ "util",
+ "zerocopy",
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "usb-api"
+version = "0.1.0"
+dependencies = [
+ "hid",
+ "idol",
+ "num-traits",
+ "userlib",
+ "zerocopy",
+ "zerocopy-derive",
 ]
 
 [[package]]
@@ -3199,7 +3265,7 @@ dependencies = [
 [[package]]
 name = "userlib"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "abi",
  "armv6m-atomic-hack",
@@ -3223,7 +3289,7 @@ dependencies = [
 [[package]]
 name = "userlib-units"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "zerocopy",
  "zerocopy-derive",
@@ -3266,7 +3332,7 @@ checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 [[package]]
 name = "volatile-const"
 version = "0.1.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 
 [[package]]
 name = "volatile-register"
@@ -3570,7 +3636,7 @@ dependencies = [
 [[package]]
 name = "xtask"
 version = "1.0.0"
-source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"
+source = "git+https://github.com/oxidecomputer/hubris#a404d696a78fb14a8d6dba1af48759ba857c792c"
 dependencies = [
  "abi",
  "anyhow",

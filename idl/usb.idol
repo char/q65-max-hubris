@@ -1,0 +1,13 @@
+Interface(
+    name: "Usb",
+    ops: {
+        "set_reports": (
+            doc: "The keyboard's current input state. Accepted immediately; the host gets it when it next polls.",
+            args: {
+                "reports": "Reports",
+            },
+            reply: Simple("()"),
+            idempotent: true,
+        ),
+    },
+)

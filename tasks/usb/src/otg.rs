@@ -9,6 +9,7 @@
 
 use stm32f4::stm32f401 as pac;
 use userlib::hl::sleep_for;
+use util::Reg;
 
 pub const MAX_PACKET: usize = 64;
 
@@ -371,23 +372,6 @@ const EPDISD: u32 = 1 << 1;
 const INEPNE: u32 = 1 << 6;
 // DIEPTSIZ
 const PKTCNT_SHIFT: u32 = 19;
-
-#[derive(Clone, Copy)]
-struct Reg(usize);
-
-impl Reg {
-    fn read(self) -> u32 {
-        unsafe { core::ptr::read_volatile(self.0 as *const u32) }
-    }
-
-    fn write(self, value: u32) {
-        unsafe { core::ptr::write_volatile(self.0 as *mut u32, value) }
-    }
-
-    fn set(self, bits: u32) {
-        self.write(self.read() | bits);
-    }
-}
 
 fn wait_for(reg: Reg, bit: u32) {
     for _ in 0..100_000 {

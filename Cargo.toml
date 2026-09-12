@@ -8,12 +8,20 @@ pedantic = { level = "warn", priority = -1 }
 cast_possible_truncation = "allow"
 
 [workspace.dependencies]
-kern = { git = "https://github.com/oxidecomputer/hubris", rev = "a404d696a78fb14a8d6dba1af48759ba857c792c" }
-userlib = { git = "https://github.com/oxidecomputer/hubris", rev = "a404d696a78fb14a8d6dba1af48759ba857c792c" }
-xtask = { git = "https://github.com/oxidecomputer/hubris", rev = "a404d696a78fb14a8d6dba1af48759ba857c792c" }
+# The hubris revision is pinned by Cargo.lock; idol-runtime depends on these same crates by URL, and
+# the two only unify if we don't ask for a `rev` here.
+build-util = { git = "https://github.com/oxidecomputer/hubris" }
+kern = { git = "https://github.com/oxidecomputer/hubris" }
+userlib = { git = "https://github.com/oxidecomputer/hubris" }
+xtask = { git = "https://github.com/oxidecomputer/hubris" }
+
+idol = { git = "https://github.com/oxidecomputer/idolatry.git", rev = "5b8da783597badc97ef554d86753aba3b89dbd01", default-features = false, features = ["no-counters"] }
+idol-runtime = { git = "https://github.com/oxidecomputer/idolatry.git", rev = "5b8da783597badc97ef554d86753aba3b89dbd01", default-features = false }
 
 cortex-m = { version = "0.7", features = ["inline-asm"] }
+num-traits = { version = "0.2", default-features = false }
 zerocopy = { version = "0.8", default-features = false, features = ["derive"] }
+zerocopy-derive = "0.8"
 cortex-m-rt = "0.6.12"
 stm32f4 = { version = "0.13.0", default-features = false, features = ["stm32f401"] }
 
