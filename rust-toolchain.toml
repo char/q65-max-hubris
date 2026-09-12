@@ -2,4 +2,4 @@
 channel = "1.95.0"
 targets = ["thumbv7em-none-eabihf"]
 profile = "minimal"
-components = ["clippy", "rustfmt"]
+components = ["clippy", "rustfmt", "rust-analyzer", "rust-src"]

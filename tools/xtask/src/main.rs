@@ -3,8 +3,6 @@ use std::path::Path;
 use anyhow::Context;
 
 fn main() -> anyhow::Result<()> {
-    anyhow::ensure!(std::env::args().len() == 1, "usage: cargo xtask");
-
     // hubris wants linker scripts to be in the working tree so let me just paste em in from the crates
     std::env::set_current_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))?;
     let metadata = cargo_metadata::MetadataCommand::new().exec()?;
@@ -21,7 +19,51 @@ fn main() -> anyhow::Result<()> {
         "task-rlink.x",
         "task-tlink.x",
     ] {
-        std::fs::copy(build.join(script), Path::new("build").join(script))?;
+        let content = std::fs::read(build.join(script))?;
+        let destination = Path::new("build").join(script);
+        if std::fs::read(&destination).ok().as_deref() != Some(&content) {
+            std::fs::write(destination, content)?;
+        }
+    }
+
+    let args = std::env::args().skip(1).collect::<Vec<_>>();
+    match args.first().map(String::as_str) {
+        Some("lsp") => {
+            let mut clients = Vec::new();
+            let mut file = None;
+            let mut args = args[1..].iter();
+            while let Some(arg) = args.next() {
+                if arg == "-c" {
+                    clients.push(args.next().context("missing LSP client JSON")?.parse()?);
+                } else {
+                    anyhow::ensure!(
+                        !arg.starts_with('-') && file.is_none(),
+                        "usage: cargo xtask lsp [-c <client-json>] <file>"
+                    );
+                    file = Some(arg.into());
+                }
+            }
+            return xtask::lsp::run(&file.context("missing source file")?, &clients);
+        }
+        Some("rust-analyzer") => {
+            anyhow::ensure!(
+                args.len() == 2,
+                "usage: cargo xtask rust-analyzer <app.toml>:<task>"
+            );
+            let (manifest, task_name) = args[1]
+                .split_once(':')
+                .context("expected <app.toml>:<task>")?;
+            anyhow::ensure!(!task_name.contains(':'), "expected <app.toml>:<task>");
+            return xtask::rust_analyzer::run(
+                None,
+                Some(xtask::rust_analyzer::HubrisTargetTask {
+                    manifest: manifest.into(),
+                    task_name: task_name.into(),
+                }),
+            );
+        }
+        None => {}
+        _ => anyhow::bail!("usage: cargo xtask [lsp|rust-analyzer]"),
     }
 
     xtask::dist::package(

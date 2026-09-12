@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -eu
+
+if [ "${1-}" = "--version" ]; then
+  exec rustup run 1.95.0 rust-analyzer --version
+fi
+
+cd "$(dirname "$0")/.."
+exec cargo xtask rust-analyzer app.toml:jefe
