@@ -26,9 +26,18 @@ uses = ["usb", "gpioa"]
 notifications = ["usb-irq"]
 interrupts = { "usb.irq" = "usb-irq" }
 
+[tasks.input]
+name = "input"
+priority = 2
+start = true
+stacksize = 4096
+max-sizes = { flash = 16384, ram = 8192 }
+uses = ["gpio"]
+task-slots = ["usb"]
+
 [tasks.idle]
 name = "idle"
-priority = 2
+priority = 3
 start = true
 stacksize = 256
 max-sizes = { flash = 256, ram = 256 }

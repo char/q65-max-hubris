@@ -1,0 +1,19 @@
+[package]
+name = "input"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+cortex-m.workspace = true
+keyboard = { path = "../../lib/keyboard" }
+usb-api = { path = "../../lib/usb-api" }
+userlib.workspace = true
+util = { path = "../../lib/util" }
+
+[[bin]]
+name = "input"
+test = false
+bench = false

@@ -80,7 +80,12 @@ fn configure_clocks(p: &pac::Peripherals) {
 
 /// configure clocks for otg and stuff
 fn enable_peripherals(p: &pac::Peripherals) {
-    p.RCC.ahb1enr.modify(|_, w| w.gpioaen().set_bit());
+    p.RCC.ahb1enr.modify(|_, w| {
+        w.gpioaen().set_bit();
+        w.gpioben().set_bit();
+        w.gpiocen().set_bit();
+        w.gpioden().set_bit()
+    });
     p.RCC.ahb2enr.modify(|_, w| w.otgfsen().set_bit());
     let _ = p.RCC.ahb2enr.read();
     // reset the OTG core because the DFU bootloader uses it
