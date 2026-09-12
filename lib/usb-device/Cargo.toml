@@ -1,0 +1,11 @@
+[package]
+name = "usb-device"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+hid = { path = "../hid" }
+util = { path = "../util" }
