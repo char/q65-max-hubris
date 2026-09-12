@@ -55,7 +55,8 @@ impl NotificationHandler for Input {
         }
         // One scan per millisecond. If we ever fall behind, skip the missed ticks rather than
         // scanning in a burst to catch up.
-        let next = (start + 1).max(sys_get_timer().now);
+        // The deadline must be in the future or an overrun can starve the RGB task.
+        let next = sys_get_timer().now + 1;
         sys_set_timer(Some(next), notifications::TIMER_MASK);
     }
 }
