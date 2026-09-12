@@ -34,6 +34,7 @@ stacksize = 4096
 max-sizes = { flash = 16384, ram = 8192 }
 uses = ["gpio"]
 task-slots = ["usb"]
+notifications = ["timer"]
 
 [tasks.idle]
 name = "idle"

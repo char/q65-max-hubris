@@ -1552,11 +1552,29 @@ dependencies = [
 name = "input"
 version = "0.1.0"
 dependencies = [
+ "build-util",
  "cortex-m",
+ "idol",
+ "idol-runtime",
  "keyboard",
+ "num-traits",
  "usb-api",
  "userlib",
  "util",
+ "zerocopy",
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "input-api"
+version = "0.1.0"
+dependencies = [
+ "idol",
+ "keyboard",
+ "num-traits",
+ "userlib",
+ "zerocopy",
+ "zerocopy-derive",
 ]
 
 [[package]]

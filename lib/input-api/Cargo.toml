@@ -1,5 +1,5 @@
 [package]
-name = "input"
+name = "input-api"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,21 +7,15 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-cortex-m.workspace = true
-idol-runtime.workspace = true
-keyboard = { path = "../../lib/keyboard" }
+keyboard = { path = "../keyboard" }
 num-traits.workspace = true
-usb-api = { path = "../../lib/usb-api" }
 userlib.workspace = true
-util = { path = "../../lib/util" }
 zerocopy.workspace = true
 zerocopy-derive.workspace = true
 
 [build-dependencies]
-build-util.workspace = true
 idol.workspace = true
 
-[[bin]]
-name = "input"
+[lib]
 test = false
-bench = false
+doctest = false

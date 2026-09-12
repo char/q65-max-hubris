@@ -1,0 +1,10 @@
+Interface(
+    name: "Input",
+    ops: {
+        "keys": (
+            doc: "The debounced state of every switch, as of the last scan.",
+            reply: Simple("Matrix"),
+            idempotent: true,
+        ),
+    },
+)
