@@ -27,7 +27,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     let args = std::env::args().skip(1).collect::<Vec<_>>();
-    match args.first().map(String::as_str) {
+    let app = match args.first().map(String::as_str) {
         Some("lsp") => {
             let mut clients = Vec::new();
             let mut file = None;
@@ -62,12 +62,21 @@ fn main() -> anyhow::Result<()> {
                 }),
             );
         }
-        None => {}
-        _ => anyhow::bail!("usage: cargo xtask [lsp|rust-analyzer]"),
-    }
+        None => "q65-max",
+        Some("build") => {
+            anyhow::ensure!(
+                args.len() == 2 && !args[1].starts_with('-'),
+                "usage: cargo xtask build <app>"
+            );
+            args[1].as_str()
+        }
+        _ => anyhow::bail!("usage: cargo xtask [build <app>|lsp|rust-analyzer]"),
+    };
+    let manifest = Path::new("apps").join(app).join("app.toml");
+    anyhow::ensure!(manifest.is_file(), "unknown app: {app}");
 
     xtask::dist::package(
-        Path::new("app.toml"),
+        &manifest,
         xtask::dist::PackageFlags {
             verbose: false,
             edges: false,

@@ -1,7 +1,7 @@
 name = "q65-max"
 target = "thumbv7em-none-eabihf"
 board = "q65-max"
-chip = "chips/stm32f401"
+chip = "../../chips/stm32f401"
 stacksize = 1024
 
 [kernel]
