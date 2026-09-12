@@ -78,10 +78,21 @@ fn configure_clocks(p: &pac::Peripherals) {
     while !p.RCC.cfgr.read().sws().is_pll() {}
 }
 
+/// configure clocks for otg and stuff
+fn enable_peripherals(p: &pac::Peripherals) {
+    p.RCC.ahb1enr.modify(|_, w| w.gpioaen().set_bit());
+    p.RCC.ahb2enr.modify(|_, w| w.otgfsen().set_bit());
+    let _ = p.RCC.ahb2enr.read();
+    // reset the OTG core because the DFU bootloader uses it
+    p.RCC.ahb2rstr.modify(|_, w| w.otgfsrst().set_bit());
+    p.RCC.ahb2rstr.modify(|_, w| w.otgfsrst().clear_bit());
+}
+
 #[cortex_m_rt::entry]
 fn main() -> ! {
     let p = pac::Peripherals::take().unwrap();
     configure_clocks(&p);
+    enable_peripherals(&p);
 
     unsafe { cortex_m::interrupt::enable() };
     unsafe { kern::startup::start_kernel(48_000) }
