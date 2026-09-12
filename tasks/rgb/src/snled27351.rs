@@ -38,6 +38,16 @@ impl Drivers {
         let spi = unsafe { &*pac::SPI1::ptr() };
 
         // PA5 SCK and PA7 MOSI are SPI1 on alternate function 5.
+        gpioa
+            .otyper
+            .modify(|_, w| w.ot5().push_pull().ot7().push_pull());
+        gpioa
+            .pupdr
+            .modify(|_, w| w.pupdr5().floating().pupdr7().floating());
+        // The reset-default 2 MHz slew rate is too slow for our 3 MHz SPI clock.
+        gpioa
+            .ospeedr
+            .modify(|_, w| w.ospeedr5().medium_speed().ospeedr7().medium_speed());
         gpioa.afrl.modify(|_, w| w.afrl5().af5().afrl7().af5());
         gpioa
             .moder
@@ -64,6 +74,8 @@ impl Drivers {
         });
 
         let drivers = Self { spi, gpiob };
+        // Let the LED drivers wake from hardware shutdown before configuring them.
+        userlib::hl::sleep_for(1);
         for driver in 0..DRIVERS {
             drivers.write(driver, FUNCTION_PAGE, CONFIGURATION, &[0]);
             drivers.write(driver, FUNCTION_PAGE, PULL_DOWN_UP, &[0xaa]);
