@@ -1,4 +1,5 @@
 use crate::{Consumer, Key, Led};
+use util::Bytes;
 
 #[derive(Clone, Copy)]
 #[repr(u8)]
@@ -110,35 +111,6 @@ const APPLICATION: u8 = 0x01;
 const CONSTANT: u8 = 0x01;
 const VARIABLE: u8 = 0x02;
 
-/// Compile-time byte writer. `finish` checks that exactly the declared length was written, so a
-/// mismatch between `encoded_len` and `encode` is a build error rather than a truncated descriptor.
-struct Bytes<const N: usize> {
-    bytes: [u8; N],
-    len: usize,
-}
-
-impl<const N: usize> Bytes<N> {
-    const fn new() -> Self {
-        Self {
-            bytes: [0; N],
-            len: 0,
-        }
-    }
-
-    const fn item(&mut self, prefix: u8, data: u8) {
-        self.bytes[self.len] = prefix;
-        self.bytes[self.len + 1] = data;
-        self.len += 2;
-    }
-
-    const fn finish(mut self, last: u8) -> [u8; N] {
-        self.bytes[self.len] = last;
-        self.len += 1;
-        assert!(self.len == N);
-        self.bytes
-    }
-}
-
 impl Descriptor {
     const fn encoded_len(&self) -> usize {
         let mut len = 6 * 2 + 1;
@@ -156,42 +128,43 @@ impl Descriptor {
 
     const fn encode<const N: usize>(&self) -> [u8; N] {
         let mut out = Bytes::new();
-        out.item(USAGE_PAGE, self.page as u8);
-        out.item(USAGE, self.usage);
-        out.item(COLLECTION, APPLICATION);
-        out.item(LOGICAL_MINIMUM, 0);
-        out.item(LOGICAL_MAXIMUM, 1);
-        out.item(REPORT_SIZE, 1);
+        out.extend(&[USAGE_PAGE, self.page as u8]);
+        out.extend(&[USAGE, self.usage]);
+        out.extend(&[COLLECTION, APPLICATION]);
+        out.extend(&[LOGICAL_MINIMUM, 0]);
+        out.extend(&[LOGICAL_MAXIMUM, 1]);
+        out.extend(&[REPORT_SIZE, 1]);
         let mut i = 0;
         while i < self.fields.len() {
             let field = self.fields[i];
             let (count, kind) = match field.bits {
                 Bits::Range(page, min, max) => {
-                    out.item(USAGE_PAGE, page as u8);
-                    out.item(USAGE_MINIMUM, min);
-                    out.item(USAGE_MAXIMUM, max);
+                    out.extend(&[USAGE_PAGE, page as u8]);
+                    out.extend(&[USAGE_MINIMUM, min]);
+                    out.extend(&[USAGE_MAXIMUM, max]);
                     (max - min + 1, VARIABLE)
                 }
                 Bits::List(page, usages) => {
-                    out.item(USAGE_PAGE, page as u8);
+                    out.extend(&[USAGE_PAGE, page as u8]);
                     let mut j = 0;
                     while j < usages.len() {
-                        out.item(USAGE, usages[j]);
+                        out.extend(&[USAGE, usages[j]]);
                         j += 1;
                     }
                     (usages.len() as u8, VARIABLE)
                 }
                 Bits::Padding(count) => (count, CONSTANT),
             };
-            out.item(REPORT_COUNT, count);
+            out.extend(&[REPORT_COUNT, count]);
             let main = match field.direction {
                 Direction::Input => INPUT,
                 Direction::Output => OUTPUT,
             };
-            out.item(main, kind);
+            out.extend(&[main, kind]);
             i += 1;
         }
-        out.finish(END_COLLECTION)
+        out.push(END_COLLECTION);
+        out.finish()
     }
 }
 

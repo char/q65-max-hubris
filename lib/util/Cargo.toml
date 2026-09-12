@@ -1,5 +1,5 @@
 [package]
-name = "hid"
+name = "util"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,5 +7,3 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-util = { path = "../util" }
-zerocopy.workspace = true
