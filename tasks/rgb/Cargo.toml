@@ -1,0 +1,19 @@
+[package]
+name = "rgb"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+input-api = { path = "../../lib/input-api" }
+keyboard = { path = "../../lib/keyboard" }
+stm32f4.workspace = true
+usb-api = { path = "../../lib/usb-api" }
+userlib.workspace = true
+
+[[bin]]
+name = "rgb"
+test = false
+bench = false

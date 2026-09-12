@@ -87,7 +87,8 @@ fn enable_peripherals(p: &pac::Peripherals) {
         w.gpioden().set_bit()
     });
     p.RCC.ahb2enr.modify(|_, w| w.otgfsen().set_bit());
-    let _ = p.RCC.ahb2enr.read();
+    p.RCC.apb2enr.modify(|_, w| w.spi1en().set_bit());
+    let _ = p.RCC.apb2enr.read();
     // reset the OTG core because the DFU bootloader uses it
     p.RCC.ahb2rstr.modify(|_, w| w.otgfsrst().set_bit());
     p.RCC.ahb2rstr.modify(|_, w| w.otgfsrst().clear_bit());

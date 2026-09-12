@@ -1,0 +1,46 @@
+#![no_std]
+#![no_main]
+
+mod snled27351;
+
+use input_api::Input;
+use keyboard::lighting::{Frame, Lighting};
+use snled27351::Drivers;
+use usb_api::{Led, Usb};
+use userlib::{hl::sleep_until, sys_get_timer, task_slot};
+
+task_slot!(USB, usb);
+task_slot!(INPUT, input);
+
+const FRAME_MS: u64 = 16;
+
+#[unsafe(export_name = "main")]
+fn main() -> ! {
+    let usb = Usb::from(USB.get_task_id());
+    let input = Input::from(INPUT.get_task_id());
+    let drivers = Drivers::init();
+    let mut lighting = Lighting::default();
+    // What the drivers are currently showing; `None` while they're shut down.
+    let mut shown: Option<Frame> = None;
+
+    loop {
+        let now = sys_get_timer().now;
+        if usb.is_awake() {
+            lighting.update(input.keys(), now);
+            let frame = lighting.frame(now, usb.leds().is_lit(Led::CapsLock));
+            if shown != Some(frame) {
+                drivers.show(&frame);
+                if shown.is_none() {
+                    drivers.enable(true);
+                }
+                shown = Some(frame);
+            }
+        } else if shown.is_some() {
+            // Nobody's looking: go dark, and don't light up stale presses on wake.
+            drivers.enable(false);
+            lighting.clear();
+            shown = None;
+        }
+        sleep_until(now + FRAME_MS);
+    }
+}

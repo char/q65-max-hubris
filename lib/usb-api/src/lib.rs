@@ -1,6 +1,6 @@
 #![no_std]
 
-pub use hid::{LedReport, Reports};
+pub use hid::{Led, LedReport, Reports};
 
 #[allow(clippy::pedantic, reason = "generated")]
 mod stub {
