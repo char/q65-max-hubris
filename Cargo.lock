@@ -3180,6 +3180,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "usb"
+version = "0.1.0"
+dependencies = [
+ "stm32f4",
+ "userlib",
+]
+
+[[package]]
 name = "userlib"
 version = "0.1.0"
 source = "git+https://github.com/oxidecomputer/hubris?rev=a404d696a78fb14a8d6dba1af48759ba857c792c#a404d696a78fb14a8d6dba1af48759ba857c792c"

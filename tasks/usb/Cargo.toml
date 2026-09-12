@@ -1,0 +1,16 @@
+[package]
+name = "usb"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+stm32f4.workspace = true
+userlib.workspace = true
+
+[[bin]]
+name = "usb"
+test = false
+bench = false
