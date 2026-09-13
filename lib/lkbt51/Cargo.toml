@@ -1,0 +1,10 @@
+[package]
+name = "lkbt51"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+hid = { path = "../hid" }

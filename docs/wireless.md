@@ -23,3 +23,12 @@ Hardware checks still required:
 - Scope CS/SCK and confirm 3 MHz, mode 0, no overlapping chip selects.
 - Measure scan latency during continuous RGB updates.
 - Exercise MISO with the radio; LED writes alone cannot validate received data.
+
+## LKBT51 protocol
+
+`lib/lkbt51` implements command framing, Q65 module configuration, HID report
+conversion, and status/ACK decoding. Its fixtures follow the Keychron QMK source,
+not captures from this keyboard. `cargo test -p lkbt51` and strict host clippy pass.
+Reads allocate 68 bytes: four SPI prefix bytes plus 64 module response bytes.
+Incomplete/unknown event packets are discarded; radio DFU and its larger/fragmented
+responses are intentionally unsupported. The module firmware is not replaced.
