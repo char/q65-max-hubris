@@ -10,6 +10,7 @@ workspace = true
 input-api = { path = "../../lib/input-api" }
 keyboard = { path = "../../lib/keyboard" }
 stm32f4.workspace = true
+spi-api = { path = "../../lib/spi-api" }
 usb-api = { path = "../../lib/usb-api" }
 userlib.workspace = true
 

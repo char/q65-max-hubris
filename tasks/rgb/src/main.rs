@@ -10,6 +10,7 @@ use usb_api::{Led, Usb};
 use userlib::{hl::sleep_until, sys_get_timer, task_slot};
 
 task_slot!(USB, usb);
+task_slot!(SPI, spi);
 task_slot!(INPUT, input);
 
 const FRAME_MS: u64 = 8;
@@ -18,7 +19,7 @@ const FRAME_MS: u64 = 8;
 fn main() -> ! {
     let usb = Usb::from(USB.get_task_id());
     let input = Input::from(INPUT.get_task_id());
-    let drivers = Drivers::init();
+    let drivers = Drivers::init(spi_api::Spi::from(SPI.get_task_id()));
     let mut lighting = Lighting::default();
     // What the drivers are currently showing; `None` while they're shut down.
     let mut shown: Option<Frame> = None;

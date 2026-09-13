@@ -2456,6 +2456,7 @@ version = "0.1.0"
 dependencies = [
  "input-api",
  "keyboard",
+ "spi-api",
  "stm32f4",
  "usb-api",
  "userlib",
@@ -2802,6 +2803,34 @@ name = "smallvec"
 version = "1.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba467056f1b547ed52077911161fc86985becbc60e8e1857c8a144dab0def891"
+
+[[package]]
+name = "spi"
+version = "0.1.0"
+dependencies = [
+ "build-util",
+ "idol",
+ "idol-runtime",
+ "num-traits",
+ "spi-api",
+ "stm32f4",
+ "userlib",
+ "util",
+ "zerocopy",
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "spi-api"
+version = "0.1.0"
+dependencies = [
+ "idol",
+ "idol-runtime",
+ "num-traits",
+ "userlib",
+ "zerocopy",
+ "zerocopy-derive",
+]
 
 [[package]]
 name = "spin"

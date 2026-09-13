@@ -1,0 +1,20 @@
+Interface(
+    name: "Spi",
+    ops: {
+        "write": (
+            doc: "One atomic transaction. False on invalid device, empty transfer, or peripheral timeout.",
+            args: { "device": "u8" },
+            leases: { "source": (type: "[u8]", read: true, max_len: Some(256)) },
+            reply: Result(ok: "bool", err: ServerDeath),
+        ),
+        "exchange": (
+            doc: "One full-duplex transaction; source and sink must have equal nonzero lengths.",
+            args: { "device": "u8" },
+            leases: {
+                "source": (type: "[u8]", read: true, max_len: Some(256)),
+                "sink": (type: "[u8]", write: true, max_len: Some(256)),
+            },
+            reply: Result(ok: "bool", err: ServerDeath),
+        ),
+    },
+)
