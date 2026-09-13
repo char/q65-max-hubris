@@ -43,15 +43,15 @@ start = true
 stacksize = 4096
 max-sizes = { flash = 16384, ram = 8192 }
 uses = ["gpio"]
-task-slots = ["jefe", "usb"]
+task-slots = ["jefe", "usb", "wireless"]
 notifications = ["timer"]
 
 [tasks.wireless]
 name = "wireless"
 priority = 3
 start = true
-stacksize = 2048
-max-sizes = { flash = 16384, ram = 4096 }
+stacksize = 4096
+max-sizes = { flash = 16384, ram = 8192 }
 uses = ["gpioa", "gpiob", "gpioc"]
 task-slots = ["spi"]
 notifications = ["timer"]
@@ -63,7 +63,7 @@ start = true
 stacksize = 4096
 max-sizes = { flash = 8192, ram = 8192 }
 uses = ["gpiob"]
-task-slots = ["usb", "input", "spi"]
+task-slots = ["input", "spi"]
 
 [tasks.idle]
 name = "idle"

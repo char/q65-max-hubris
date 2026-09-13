@@ -1,6 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 
 pub mod link;
+pub mod reports;
 
 // Protocol reference: Keychron QMK common/wireless/lkbt51.{c,h}.
 use hid::{Consumer, ConsumerReport, KeyboardReport};

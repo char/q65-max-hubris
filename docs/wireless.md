@@ -51,3 +51,30 @@ The SPI timer deasserts PA4 even if wireless stops running. The radio's subseque
 
 This stage leaves routing wired-only; the wireless service is disabled until
 its enable API is called. No hardware connection or RF performance is yet verified.
+
+## Transport routing and delivery
+
+PA9/PA10 select wired (11), 2.4 GHz (10), or Bluetooth (01). Bluetooth is
+unsupported and sends no reports; 00 is ignored as a switch transition. Startup
+sends nothing until a valid selection has been stable for 100 ms.
+
+Input owns routing. RGB queries input for the selected host's connection and LED
+state rather than assuming USB. The existing keymap is unchanged. Pairing is
+available through `Wireless::pair`; a physical shortcut still needs choosing.
+No pairing records are erased during normal connection or module reset.
+
+Wireless uses the module's 20-byte NKRO format and three consumer usage slots.
+A 64-snapshot queue preserves quick taps, including the encoder's immediate
+press/release pair. Full queues increment the exposed overflow counter, discard
+the backlog, and send all-up followed by current state. Offline taps are discarded;
+reconnect sends all-up then currently held keys, not stale queued typing.
+
+Leaving wireless drains keyboard and consumer releases before disconnecting, with
+a 100 ms escape deadline if the module stops acknowledging. USB releases are
+submitted to the existing USB service before changing routes.
+
+Validation: firmware builds, 14 radio tests and 2 mode-switch tests pass; all
+existing HID/USB tests and the other 14 keyboard tests pass. Hardware checks remain:
+rapid taps, encoder rotation, >6 held keys, held-key transport changes, pairing,
+replugging the dongle, and RGB running concurrently. Capture ACKs to verify the
+sequence-byte interpretation and measure effective report cadence/latency.

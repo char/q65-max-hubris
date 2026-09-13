@@ -1560,12 +1560,14 @@ dependencies = [
  "cortex-m",
  "idol",
  "idol-runtime",
+ "input-api",
  "jefe-api",
  "keyboard",
  "num-traits",
  "usb-api",
  "userlib",
  "util",
+ "wireless-api",
  "zerocopy",
  "zerocopy-derive",
 ]
@@ -1574,6 +1576,7 @@ dependencies = [
 name = "input-api"
 version = "0.1.0"
 dependencies = [
+ "hid",
  "idol",
  "keyboard",
  "num-traits",
@@ -2465,7 +2468,6 @@ dependencies = [
  "keyboard",
  "spi-api",
  "stm32f4",
- "usb-api",
  "userlib",
 ]
 

@@ -3,6 +3,7 @@
 mod keymap;
 mod layout;
 pub mod lighting;
+pub mod transport;
 
 pub use keymap::{Command, Keymap};
 

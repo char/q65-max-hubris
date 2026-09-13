@@ -11,6 +11,8 @@ cortex-m.workspace = true
 idol-runtime.workspace = true
 jefe-api = { path = "../../lib/jefe-api" }
 keyboard = { path = "../../lib/keyboard" }
+input-api = { path = "../../lib/input-api" }
+wireless-api = { path = "../../lib/wireless-api" }
 num-traits.workspace = true
 usb-api = { path = "../../lib/usb-api" }
 userlib.workspace = true

@@ -117,6 +117,7 @@ impl idl::InOrderWirelessImpl for Wireless {
             reserved: 0,
             errors: self.link.errors,
             resets: self.link.resets,
+            overflows: self.link.reports.overflows,
         })
     }
 }

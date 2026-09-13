@@ -12,6 +12,7 @@ pub struct Status {
     pub reserved: u8,
     pub errors: u32,
     pub resets: u32,
+    pub overflows: u32,
 }
 
 #[allow(clippy::pedantic, reason = "generated")]

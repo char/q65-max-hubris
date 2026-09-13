@@ -1,3 +1,4 @@
+use crate::reports::ReportQueue;
 use crate::{Ack, Connection, Event, Packet};
 use hid::{ConsumerReport, KeyboardReport, LedReport, Reports};
 
@@ -13,6 +14,7 @@ pub enum State {
     Connecting,
     Connected,
     Pairing,
+    Releasing,
     DisconnectLow,
     Disconnecting,
 }
@@ -44,7 +46,7 @@ pub struct Link {
     connection_ack: bool,
     interval: u64,
     next_report: u64,
-    reports: Reports,
+    pub reports: ReportQueue,
     sent_keyboard: Option<KeyboardReport>,
     sent_consumer: Option<ConsumerReport>,
     in_flight: Option<InFlight>,
@@ -64,7 +66,11 @@ impl Default for Link {
             connection_ack: false,
             interval: 1,
             next_report: 0,
-            reports: Reports::default(),
+            reports: {
+                let mut queue = ReportQueue::default();
+                queue.reconnect();
+                queue
+            },
             sent_keyboard: None,
             sent_consumer: None,
             in_flight: None,
@@ -74,17 +80,17 @@ impl Default for Link {
 
 impl Link {
     pub fn enable(&mut self, enabled: bool, now: u64) {
+        if self.enabled == enabled {
+            return;
+        }
         self.enabled = enabled;
         self.pairing = false;
         if enabled && self.state == State::Disabled {
             self.state = State::WakeLow;
             self.deadline = now;
-        } else if !enabled
-            && matches!(
-                self.state,
-                State::Connected | State::Connecting | State::Pairing
-            )
-        {
+        } else if !enabled && self.state == State::Connected {
+            self.start_release(now);
+        } else if !enabled && matches!(self.state, State::Connecting | State::Pairing) {
             self.state = State::DisconnectLow;
             self.deadline = now;
             self.in_flight = None;
@@ -99,14 +105,27 @@ impl Link {
             )
         {
             self.pairing = true;
-            self.in_flight = None;
-            self.state = State::WakeLow;
-            self.deadline = now;
+            if self.state == State::Connected {
+                self.start_release(now);
+            } else {
+                self.in_flight = None;
+                self.state = State::WakeLow;
+                self.deadline = now;
+            }
         }
     }
 
     pub fn set_reports(&mut self, reports: Reports) {
-        self.reports = reports;
+        self.reports.submit(reports, self.state == State::Connected);
+    }
+
+    fn start_release(&mut self, now: u64) {
+        self.reports.release();
+        self.sent_keyboard = None;
+        self.sent_consumer = None;
+        self.in_flight = None;
+        self.state = State::Releasing;
+        self.deadline = now + 100;
     }
 
     pub fn failed(&mut self, now: u64) {
@@ -140,6 +159,7 @@ impl Link {
                         | State::Waking
                         | State::DisconnectLow
                         | State::Disconnecting
+                        | State::Releasing
                 ) {
                     return;
                 }
@@ -155,10 +175,12 @@ impl Link {
                         if self.state != State::Connected {
                             self.in_flight = None;
                             self.sent_keyboard = None;
+                            self.reports.reconnect();
                             self.sent_consumer = None;
                             self.leds = LedReport::default();
                         }
                         self.state = State::Connected;
+                        self.pairing = false;
                     }
                     (Connection::Pairing, crate::HOST_2P4) => {
                         self.state = State::Pairing;
@@ -208,10 +230,6 @@ impl Link {
         Packet::command(self.sequence, payload, ack).unwrap()
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "keep timed state transitions together"
-    )]
     pub fn step(&mut self, now: u64) -> Option<Action> {
         // PA4 is held low during these states: clocking even an event read would
         // turn a wake pulse into an unintended radio transaction.
@@ -227,7 +245,15 @@ impl Link {
             self.connection_ack = false;
             return Some(Action::Send(self.packet(&crate::CONNECTION_ACK, false)));
         }
-        if self.state != State::Connected && now < self.deadline {
+        if self.state == State::Releasing && now >= self.deadline {
+            self.state = if self.pairing {
+                State::WakeLow
+            } else {
+                State::DisconnectLow
+            };
+            self.in_flight = None;
+        }
+        if !matches!(self.state, State::Connected | State::Releasing) && now < self.deadline {
             return None;
         }
         match self.state {
@@ -305,41 +331,55 @@ impl Link {
                 self.leds = LedReport::default();
                 Some(Action::Send(self.packet(&crate::DISCONNECT, true)))
             }
-            State::Connected => {
-                if let Some(pending) = &mut self.in_flight {
-                    if now < pending.deadline {
-                        return None;
-                    }
-                    if pending.attempts == 3 {
-                        self.failed(now);
-                        return None;
-                    }
-                    pending.attempts += 1;
-                    pending.deadline = now + self.interval + 10;
-                    return Some(Action::Send(pending.packet.clone()));
-                }
-                if now < self.next_report {
-                    return None;
-                }
-                let packet = if Some(self.reports.keyboard) != self.sent_keyboard {
-                    self.sent_keyboard = Some(self.reports.keyboard);
-                    self.packet(&crate::keyboard(self.reports.keyboard), true)
-                } else if Some(self.reports.consumer) != self.sent_consumer {
-                    self.sent_consumer = Some(self.reports.consumer);
-                    self.packet(&crate::consumer(self.reports.consumer), true)
-                } else {
-                    return None;
-                };
-                self.in_flight = Some(InFlight {
-                    sequence: self.sequence,
-                    command: packet.bytes()[9],
-                    packet: packet.clone(),
-                    deadline: now + self.interval + 10,
-                    attempts: 1,
-                });
-                Some(Action::Send(packet))
-            }
+            State::Connected | State::Releasing => self.send_report(now),
         }
+    }
+
+    fn send_report(&mut self, now: u64) -> Option<Action> {
+        if let Some(pending) = &mut self.in_flight {
+            if now < pending.deadline {
+                return None;
+            }
+            if pending.attempts == 3 {
+                self.failed(now);
+                return None;
+            }
+            pending.attempts += 1;
+            pending.deadline = now + self.interval + 10;
+            return Some(Action::Send(pending.packet.clone()));
+        }
+        if now < self.next_report {
+            return None;
+        }
+        while let Some(report) = self.reports.front() {
+            let packet = if Some(report.keyboard) != self.sent_keyboard {
+                self.sent_keyboard = Some(report.keyboard);
+                self.packet(&crate::nkro(report.keyboard), true)
+            } else if Some(report.consumer) != self.sent_consumer {
+                self.sent_consumer = Some(report.consumer);
+                self.packet(&crate::consumer(report.consumer), true)
+            } else {
+                self.reports.pop();
+                continue;
+            };
+            self.in_flight = Some(InFlight {
+                sequence: self.sequence,
+                command: packet.bytes()[9],
+                packet: packet.clone(),
+                deadline: now + self.interval + 10,
+                attempts: 1,
+            });
+            return Some(Action::Send(packet));
+        }
+        if self.state == State::Releasing {
+            self.state = if self.pairing {
+                State::WakeLow
+            } else {
+                State::DisconnectLow
+            };
+            self.deadline = now;
+        }
+        None
     }
 
     pub fn pulse_started(&mut self, now: u64) {
@@ -415,11 +455,13 @@ mod tests {
             state: State::Connected,
             ..Link::default()
         };
-        link.step(0);
+        let Some(Action::Send(first)) = link.step(0) else {
+            panic!()
+        };
         link.event(
             Event::Ack {
-                sequence: 255,
-                command: 0x11,
+                sequence: first.bytes()[8].wrapping_add(1),
+                command: first.bytes()[9],
                 result: Ack::Success,
             },
             1,
@@ -427,12 +469,97 @@ mod tests {
         assert!(link.step(2).is_none());
         link.event(
             Event::Ack {
-                sequence: 1,
-                command: 0x11,
+                sequence: first.bytes()[8],
+                command: first.bytes()[9],
                 result: Ack::Success,
             },
             3,
         );
         assert!(matches!(link.step(4), Some(Action::Send(_))));
+    }
+
+    #[test]
+    fn keyboard_and_encoder_taps_survive_an_ack_delay() {
+        let mut link = Link {
+            enabled: true,
+            state: State::Connected,
+            ..Link::default()
+        };
+        let mut pressed = Reports::default();
+        pressed.keyboard.press(hid::Key::A);
+        pressed.consumer.press(hid::Consumer::VolumeUp);
+        link.set_reports(pressed);
+        link.set_reports(Reports::default());
+        let mut keyboards = Vec::new();
+        let mut consumers = Vec::new();
+        for now in 0..100 {
+            if let Some(Action::Send(packet)) = link.step(now) {
+                let bytes = packet.bytes();
+                match bytes[9] {
+                    0x12 => keyboards.push(bytes[11]),
+                    0x13 => consumers.push(bytes[10]),
+                    _ => panic!("unexpected control command"),
+                }
+                link.event(
+                    Event::Ack {
+                        sequence: bytes[8],
+                        command: bytes[9],
+                        result: Ack::Success,
+                    },
+                    now + 3,
+                );
+            }
+        }
+        assert_eq!(keyboards, [0, 0x10, 0]);
+        assert_eq!(consumers, [0, 0xe9, 0]);
+    }
+
+    #[test]
+    fn leaving_wireless_releases_both_report_types_before_disconnect() {
+        let mut link = Link {
+            enabled: true,
+            state: State::Connected,
+            ..Link::default()
+        };
+        link.enable(false, 0);
+        let mut releases = Vec::new();
+        for now in 0..30 {
+            match link.step(now) {
+                Some(Action::Send(packet)) => {
+                    let bytes = packet.bytes();
+                    assert!(bytes[10..bytes.len() - 2].iter().all(|&b| b == 0));
+                    releases.push(bytes[9]);
+                    link.event(
+                        Event::Ack {
+                            sequence: bytes[8],
+                            command: bytes[9],
+                            result: Ack::Success,
+                        },
+                        now,
+                    );
+                }
+                Some(Action::Pulse(100)) => {
+                    assert_eq!(releases, [0x12, 0x13]);
+                    return;
+                }
+                None => {}
+                _ => panic!("unexpected action before release"),
+            }
+        }
+        panic!("never disconnected");
+    }
+
+    #[test]
+    fn disabling_during_wake_does_not_initiate_a_connection() {
+        let mut link = Link {
+            enabled: true,
+            state: State::Waking,
+            deadline: 310,
+            ..Link::default()
+        };
+        link.enable(false, 20);
+        assert!(link.step(309).is_none());
+        assert!(link.step(310).is_none());
+        assert!(matches!(link.step(311), Some(Action::Pulse(100))));
     }
 }

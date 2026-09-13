@@ -1,6 +1,11 @@
 Interface(
     name: "Input",
     ops: {
+        "status": (
+            doc: "Connection and lock-key state of the selected transport.",
+            reply: Simple("Status"),
+            idempotent: true,
+        ),
         "keys": (
             doc: "The debounced state of every switch, as of the last scan.",
             reply: Simple("Matrix"),

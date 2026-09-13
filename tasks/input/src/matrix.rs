@@ -75,6 +75,10 @@ impl Pin {
 }
 
 pub fn init() {
+    for pin in [Pin(GPIOA, 9), Pin(GPIOA, 10)] {
+        pin.field(MODER, INPUT);
+        pin.field(PUPDR, 0);
+    }
     for pin in ROW_PINS.iter().chain(&COLUMN_PINS).chain(&ENCODER_PINS) {
         pin.field(MODER, INPUT);
         pin.field(PUPDR, PULL_UP);
@@ -85,6 +89,11 @@ pub fn init() {
         pin.field(OSPEEDR, 0);
         pin.field(MODER, OUTPUT);
     }
+}
+
+pub fn mode_switch() -> u8 {
+    let pins = Reg(GPIOA + IDR).read();
+    (((pins >> 9) & 1) << 1 | ((pins >> 10) & 1)) as u8
 }
 
 pub fn scan() -> Matrix {

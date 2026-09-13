@@ -7,6 +7,7 @@ edition = "2024"
 workspace = true
 
 [dependencies]
+hid = { path = "../hid" }
 keyboard = { path = "../keyboard" }
 num-traits.workspace = true
 userlib.workspace = true

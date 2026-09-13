@@ -3,13 +3,11 @@
 
 mod snled27351;
 
-use input_api::Input;
+use input_api::{Input, Led};
 use keyboard::lighting::{Frame, Lighting};
 use snled27351::Drivers;
-use usb_api::{Led, Usb};
 use userlib::{hl::sleep_until, sys_get_timer, task_slot};
 
-task_slot!(USB, usb);
 task_slot!(SPI, spi);
 task_slot!(INPUT, input);
 
@@ -17,7 +15,6 @@ const FRAME_MS: u64 = 8;
 
 #[unsafe(export_name = "main")]
 fn main() -> ! {
-    let usb = Usb::from(USB.get_task_id());
     let input = Input::from(INPUT.get_task_id());
     let drivers = Drivers::init(spi_api::Spi::from(SPI.get_task_id()));
     let mut lighting = Lighting::default();
@@ -26,9 +23,10 @@ fn main() -> ! {
 
     loop {
         let now = sys_get_timer().now;
-        if usb.is_awake() {
+        let status = input.status();
+        if status.awake != 0 {
             lighting.update(input.keys(), now);
-            let frame = lighting.frame(now, usb.leds().is_lit(Led::CapsLock));
+            let frame = lighting.frame(now, status.leds.is_lit(Led::CapsLock));
             if shown != Some(frame) {
                 drivers.show(&frame);
                 if shown.is_none() {
