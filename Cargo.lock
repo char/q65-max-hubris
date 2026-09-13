@@ -3696,6 +3696,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b97319f7b8343df12cc98938e5c3eb436064524c8d2b4e30a1d3a36eecdf81"
 
 [[package]]
+name = "wireless"
+version = "0.1.0"
+dependencies = [
+ "build-util",
+ "hid",
+ "idol",
+ "idol-runtime",
+ "lkbt51",
+ "num-traits",
+ "spi-api",
+ "stm32f4",
+ "userlib",
+ "util",
+ "wireless-api",
+ "zerocopy",
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "wireless-api"
+version = "0.1.0"
+dependencies = [
+ "hid",
+ "idol",
+ "idol-runtime",
+ "num-traits",
+ "userlib",
+ "zerocopy",
+ "zerocopy-derive",
+]
+
+[[package]]
 name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

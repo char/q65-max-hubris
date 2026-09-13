@@ -65,15 +65,25 @@ impl Drivers {
     }
 
     fn write(&self, driver: usize, page: u8, register: u8, data: &[u8]) {
-        let mut bytes = [0; 194];
-        bytes[0] = WRITE | page;
-        bytes[1] = register;
-        bytes[2..2 + data.len()].copy_from_slice(data);
-        assert!(
-            self.spi
-                .write(driver as u8, &bytes[..2 + data.len()])
-                .unwrap_or(false),
-            "SPI1 transfer failed"
-        );
+        // Bound priority inversion: each LED transaction clocks at most 34 bytes.
+        for (index, chunk) in data.chunks(32).enumerate() {
+            let mut bytes = [0; 34];
+            bytes[0] = WRITE | page;
+            bytes[1] = register + (index * 32) as u8;
+            bytes[2..2 + chunk.len()].copy_from_slice(chunk);
+            let deadline = userlib::sys_get_timer().now + 200;
+            while !self
+                .spi
+                .write(driver as u8, &bytes[..2 + chunk.len()])
+                .unwrap_or(false)
+            {
+                assert!(
+                    userlib::sys_get_timer().now < deadline,
+                    "SPI1 transfer failed"
+                );
+                // PA4 wake pulses temporarily prevent clocking either LED driver.
+                userlib::hl::sleep_for(1);
+            }
+        }
     }
 }

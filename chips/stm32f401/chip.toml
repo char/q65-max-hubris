@@ -15,6 +15,10 @@ size = 1024
 address = 0x40020400
 size = 1024
 
+[gpioc]
+address = 0x40020800
+size = 1024
+
 [spi1]
 address = 0x40013000
 size = 1024

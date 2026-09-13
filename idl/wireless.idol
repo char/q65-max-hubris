@@ -1,0 +1,22 @@
+Interface(
+    name: "Wireless",
+    ops: {
+        "enable": (
+            args: { "enabled": "bool" },
+            reply: Simple("()"),
+            idempotent: true,
+        ),
+        "set_reports": (
+            args: { "reports": "Reports" },
+            reply: Simple("()"),
+            idempotent: true,
+        ),
+        "pair": (
+            reply: Result(ok: "()", err: ServerDeath),
+        ),
+        "status": (
+            reply: Simple("Status"),
+            idempotent: true,
+        ),
+    },
+)

@@ -29,15 +29,16 @@ interrupts = { "usb.irq" = "usb-irq" }
 
 [tasks.spi]
 name = "spi"
-priority = 3
+priority = 2
 start = true
 stacksize = 1024
 max-sizes = { flash = 8192, ram = 2048 }
 uses = ["spi1", "gpioa", "gpiob"]
+notifications = ["timer"]
 
 [tasks.input]
 name = "input"
-priority = 2
+priority = 4
 start = true
 stacksize = 4096
 max-sizes = { flash = 16384, ram = 8192 }
@@ -45,9 +46,19 @@ uses = ["gpio"]
 task-slots = ["jefe", "usb"]
 notifications = ["timer"]
 
+[tasks.wireless]
+name = "wireless"
+priority = 3
+start = true
+stacksize = 2048
+max-sizes = { flash = 16384, ram = 4096 }
+uses = ["gpioa", "gpiob", "gpioc"]
+task-slots = ["spi"]
+notifications = ["timer"]
+
 [tasks.rgb]
 name = "rgb"
-priority = 4
+priority = 5
 start = true
 stacksize = 4096
 max-sizes = { flash = 8192, ram = 8192 }
@@ -56,7 +67,7 @@ task-slots = ["usb", "input", "spi"]
 
 [tasks.idle]
 name = "idle"
-priority = 5
+priority = 6
 start = true
 stacksize = 256
 max-sizes = { flash = 256, ram = 256 }

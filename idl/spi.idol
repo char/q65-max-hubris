@@ -1,6 +1,11 @@
 Interface(
     name: "Spi",
     ops: {
+        "radio_pulse": (
+            doc: "Hold radio CS low without clocks for 1..100 ms; reject transactions until it expires. Only the wireless task may request this.",
+            args: { "ms": "u16" },
+            reply: Result(ok: "bool", err: ServerDeath),
+        ),
         "write": (
             doc: "One atomic transaction. False on invalid device, empty transfer, or peripheral timeout.",
             args: { "device": "u8" },

@@ -1,0 +1,22 @@
+[package]
+name = "wireless-api"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+idol-runtime.workspace = true
+hid = { path = "../hid" }
+num-traits.workspace = true
+userlib.workspace = true
+zerocopy.workspace = true
+zerocopy-derive.workspace = true
+
+[build-dependencies]
+idol.workspace = true
+
+[lib]
+test = false
+doctest = false

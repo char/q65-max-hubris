@@ -69,7 +69,7 @@ impl Controller {
         self.spi.cr1.modify(|_, w| w.spe().set_bit());
     }
 
-    fn select(&self, device: u8, active: bool) {
+    pub fn select(&self, device: u8, active: bool) {
         let pin = match device {
             0 => 9,
             1 => 8,
