@@ -75,7 +75,7 @@ impl Drivers {
 
         let drivers = Self { spi, gpiob };
         // Let the LED drivers wake from hardware shutdown before configuring them.
-        userlib::hl::sleep_for(1);
+        userlib::hl::sleep_for(100);
         for driver in 0..DRIVERS {
             drivers.write(driver, FUNCTION_PAGE, CONFIGURATION, &[0]);
             drivers.write(driver, FUNCTION_PAGE, PULL_DOWN_UP, &[0xaa]);
