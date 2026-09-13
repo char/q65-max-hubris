@@ -20,18 +20,26 @@ fn main() -> ! {
     let mut lighting = Lighting::default();
     // What the drivers are currently showing; `None` while they're shut down.
     let mut shown: Option<Frame> = None;
+    let mut transport = 0;
 
     loop {
         let now = sys_get_timer().now;
         let status = input.status();
-        if status.awake != 0 {
+        if status.transport != transport {
+            // The mode switch can brown out the LED supply without resetting the MCU.
+            drivers.enable(false);
+            shown = None;
+            lighting.clear();
+            transport = status.transport;
+        }
+        if status.backlight != 0 {
             lighting.update(input.keys(), now);
             let frame = lighting.frame(now, status.leds.is_lit(Led::CapsLock));
             if shown != Some(frame) {
-                drivers.show(&frame);
                 if shown.is_none() {
                     drivers.enable(true);
                 }
+                drivers.show(&frame);
                 shown = Some(frame);
             }
         } else if shown.is_some() {

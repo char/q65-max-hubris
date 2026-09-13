@@ -7,7 +7,6 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-hid = { path = "../../lib/hid" }
 idol-runtime.workspace = true
 num-traits.workspace = true
 stm32f4.workspace = true
@@ -15,7 +14,6 @@ spi-api = { path = "../../lib/spi-api" }
 wireless-api = { path = "../../lib/wireless-api" }
 lkbt51 = { path = "../../lib/lkbt51" }
 userlib.workspace = true
-util = { path = "../../lib/util" }
 zerocopy.workspace = true
 zerocopy-derive.workspace = true
 

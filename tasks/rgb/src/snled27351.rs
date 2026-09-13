@@ -25,36 +25,37 @@ const SOFTWARE_SLEEP: u8 = 0x1a;
 
 pub struct Drivers {
     spi: spi_api::Spi,
+    gpiob: &'static pac::gpiob::RegisterBlock,
 }
 
 impl Drivers {
-    /// Brings both drivers up configured the way QMK does for this board, with all LEDs enabled
-    /// but everything at zero and the drivers in software shutdown until `enable`.
     pub fn init(spi: spi_api::Spi) -> Self {
         let gpiob = unsafe { &*pac::GPIOB::ptr() };
-        gpiob.bsrr.write(|w| w.bs7().set_bit());
+        gpiob.bsrr.write(|w| w.br7().set_bit());
         gpiob.moder.modify(|_, w| w.moder7().output());
-        let drivers = Self { spi };
+        Self { spi, gpiob }
+    }
+
+    /// Hardware shutdown loses register state; restore it before showing a frame.
+    pub fn enable(&self, on: bool) {
+        if !on {
+            self.gpiob.bsrr.write(|w| w.br7().set_bit());
+            return;
+        }
+        self.gpiob.bsrr.write(|w| w.bs7().set_bit());
         // Let the LED drivers wake from hardware shutdown before configuring them.
         userlib::hl::sleep_for(100);
         for driver in 0..DRIVERS {
-            drivers.write(driver, FUNCTION_PAGE, CONFIGURATION, &[0]);
-            drivers.write(driver, FUNCTION_PAGE, PULL_DOWN_UP, &[0xaa]);
-            drivers.write(driver, FUNCTION_PAGE, SCAN_PHASE, &[0]); // all nine channels
-            drivers.write(driver, FUNCTION_PAGE, SLEW_RATE_1, &[0x04]); // PWM delay phase
-            drivers.write(driver, FUNCTION_PAGE, SLEW_RATE_2, &[0xc0]); // slew rate control
-            drivers.write(driver, FUNCTION_PAGE, SOFTWARE_SLEEP, &[0]);
-            drivers.write(driver, PWM_PAGE, 0, &[0; 192]);
-            drivers.write(driver, CURRENT_TUNE_PAGE, 0, &[0x40; 12]);
-            drivers.write(driver, LED_CONTROL_PAGE, 0, &[0xff; 24]);
-        }
-        drivers
-    }
-
-    /// Software shutdown: off is dark and low-power but keeps the configuration.
-    pub fn enable(&self, on: bool) {
-        for driver in 0..DRIVERS {
-            self.write(driver, FUNCTION_PAGE, CONFIGURATION, &[u8::from(on)]);
+            self.write(driver, FUNCTION_PAGE, CONFIGURATION, &[0]);
+            self.write(driver, FUNCTION_PAGE, PULL_DOWN_UP, &[0xaa]);
+            self.write(driver, FUNCTION_PAGE, SCAN_PHASE, &[0]); // all nine channels
+            self.write(driver, FUNCTION_PAGE, SLEW_RATE_1, &[0x04]); // PWM delay phase
+            self.write(driver, FUNCTION_PAGE, SLEW_RATE_2, &[0xc0]); // slew rate control
+            self.write(driver, FUNCTION_PAGE, SOFTWARE_SLEEP, &[0]);
+            self.write(driver, PWM_PAGE, 0, &[0; 192]);
+            self.write(driver, CURRENT_TUNE_PAGE, 0, &[0x40; 12]);
+            self.write(driver, LED_CONTROL_PAGE, 0, &[0xff; 24]);
+            self.write(driver, FUNCTION_PAGE, CONFIGURATION, &[1]);
         }
     }
 

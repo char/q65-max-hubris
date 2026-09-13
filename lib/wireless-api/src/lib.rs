@@ -1,6 +1,7 @@
 #![no_std]
 
 pub use hid::{LedReport, Reports};
+pub use lkbt51::power::{CHARGING, CRITICAL, LOW, USB_POWER, VALID};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout};
 
 #[derive(Clone, Copy, Debug, Default, FromBytes, IntoBytes, Immutable, KnownLayout)]
@@ -9,6 +10,9 @@ pub struct Status {
     pub connected: u8,
     pub pairing: u8,
     pub leds: LedReport,
+    pub flags: u8,
+    pub millivolts: u16,
+    pub percent: u8,
     pub reserved: u8,
     pub errors: u32,
     pub resets: u32,

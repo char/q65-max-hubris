@@ -2824,7 +2824,6 @@ dependencies = [
  "spi-api",
  "stm32f4",
  "userlib",
- "util",
  "zerocopy",
  "zerocopy-derive",
 ]
@@ -3702,7 +3701,6 @@ name = "wireless"
 version = "0.1.0"
 dependencies = [
  "build-util",
- "hid",
  "idol",
  "idol-runtime",
  "lkbt51",
@@ -3710,7 +3708,6 @@ dependencies = [
  "spi-api",
  "stm32f4",
  "userlib",
- "util",
  "wireless-api",
  "zerocopy",
  "zerocopy-derive",
@@ -3723,6 +3720,7 @@ dependencies = [
  "hid",
  "idol",
  "idol-runtime",
+ "lkbt51",
  "num-traits",
  "userlib",
  "zerocopy",

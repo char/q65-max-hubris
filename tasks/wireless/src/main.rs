@@ -14,8 +14,12 @@ task_slot!(SPI, spi);
 fn main() -> ! {
     let gpiob = unsafe { &*pac::GPIOB::ptr() };
     let gpioc = unsafe { &*pac::GPIOC::ptr() };
-    gpiob.pupdr.modify(|_, w| w.pupdr1().pull_up());
-    gpiob.moder.modify(|_, w| w.moder1().input());
+    gpiob
+        .pupdr
+        .modify(|_, w| w.pupdr0().pull_up().pupdr1().pull_up().pupdr13().pull_up());
+    gpiob
+        .moder
+        .modify(|_, w| w.moder0().input().moder1().input().moder13().input());
     gpioc.bsrr.write(|w| w.br4().set_bit());
     gpioc.moder.modify(|_, w| w.moder4().output());
     let mut wireless = Wireless {
@@ -45,6 +49,10 @@ impl NotificationHandler for Wireless {
 
     fn handle_notification(&mut self, _: userlib::NotificationBits) {
         let now = sys_get_timer().now;
+        let pins = self.gpiob.idr.read();
+        self.link
+            .battery
+            .power(pins.idr0().bit_is_clear(), pins.idr13().bit_is_clear());
         if self.link.can_read() && self.gpiob.idr.read().idr1().bit_is_clear() {
             let mut bytes = [0; lkbt51::READ_SIZE];
             if self
@@ -85,13 +93,22 @@ impl NotificationHandler for Wireless {
                 self.link.failed(sys_get_timer().now);
             }
         }
-        sys_set_timer(Some(sys_get_timer().now + 1), notifications::TIMER_MASK);
+        let interval = if matches!(self.link.state, State::Disabled | State::LowBattery) {
+            100
+        } else {
+            1
+        };
+        sys_set_timer(
+            Some(sys_get_timer().now + interval),
+            notifications::TIMER_MASK,
+        );
     }
 }
 
 impl idl::InOrderWirelessImpl for Wireless {
     fn enable(&mut self, _: &RecvMessage, enabled: bool) -> Result<(), RequestError<Infallible>> {
         self.link.enable(enabled, sys_get_timer().now);
+        sys_set_timer(Some(sys_get_timer().now), notifications::TIMER_MASK);
         Ok(())
     }
 
@@ -115,6 +132,9 @@ impl idl::InOrderWirelessImpl for Wireless {
             pairing: u8::from(self.link.state == State::Pairing),
             leds: self.link.leds,
             reserved: 0,
+            flags: self.link.battery.flags(sys_get_timer().now),
+            millivolts: self.link.battery.millivolts,
+            percent: self.link.battery.percent(),
             errors: self.link.errors,
             resets: self.link.resets,
             overflows: self.link.reports.overflows,

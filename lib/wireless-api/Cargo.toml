@@ -7,6 +7,7 @@ edition = "2024"
 workspace = true
 
 [dependencies]
+lkbt51 = { path = "../lkbt51" }
 idol-runtime.workspace = true
 hid = { path = "../hid" }
 num-traits.workspace = true

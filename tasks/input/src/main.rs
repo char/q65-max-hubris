@@ -26,6 +26,7 @@ fn main() -> ! {
         wireless: Wireless::from(WIRELESS.get_task_id()),
         mode: ModeSwitch::default(),
         keys: Matrix::default(),
+        last_activity: sys_get_timer().now,
     };
     let mut incoming = [0; idl::INCOMING_SIZE];
     sys_set_timer(Some(sys_get_timer().now), notifications::TIMER_MASK);
@@ -42,6 +43,7 @@ struct Input {
     wireless: Wireless,
     mode: ModeSwitch,
     keys: Matrix,
+    last_activity: u64,
 }
 
 impl NotificationHandler for Input {
@@ -53,6 +55,7 @@ impl NotificationHandler for Input {
         let start = sys_get_timer().now;
         let previous = self.mode.active;
         if let Some(transport) = self.mode.update(matrix::mode_switch(), start) {
+            self.last_activity = start;
             match previous {
                 Transport::Usb => self.usb.set_reports(Reports::default()),
                 Transport::Wireless => self.wireless.enable(false),
@@ -68,16 +71,25 @@ impl NotificationHandler for Input {
                 Transport::Off => {}
             }
         }
-        self.keys = self.debouncer.update(matrix::scan(), start);
+        let keys = self.debouncer.update(matrix::scan(), start);
+        if keys != self.keys {
+            self.last_activity = start;
+        }
+        self.keys = keys;
         let send = |reports: Reports| match self.mode.active {
             Transport::Usb => self.usb.set_reports(reports),
             Transport::Wireless => self.wireless.set_reports(reports),
             Transport::Off => {}
         };
         if let Some(Command::EnterBootloader) = self.keymap.update(self.keys, start, send) {
+            self.usb.set_reports(Reports::default());
+            self.wireless.enable(false);
+            // Give the radio's release/disconnect sequence time before entering ROM.
+            userlib::hl::sleep_for(250);
             jefe_api::enter_bootloader(JEFE.get_task_id());
         }
         if let Some(rotation) = self.encoder.update(matrix::encoder_state()) {
+            self.last_activity = start;
             self.keymap.turn(rotation, send);
         }
         // One scan per millisecond. If we ever fall behind, skip the missed ticks rather than
@@ -93,19 +105,31 @@ impl idl::InOrderInputImpl for Input {
         &mut self,
         _: &RecvMessage,
     ) -> Result<input_api::Status, RequestError<core::convert::Infallible>> {
-        let (awake, leds) = match self.mode.active {
-            Transport::Usb => (u8::from(self.usb.is_awake()), self.usb.leds()),
+        let (awake, leds, backlight) = match self.mode.active {
+            Transport::Usb => {
+                let awake = u8::from(self.usb.is_awake());
+                (awake, self.usb.leds(), awake)
+            }
             Transport::Wireless => {
                 let status = self.wireless.status();
-                (status.connected, status.leds)
+                let recent = self.keys.iter().any(|&row| row != 0)
+                    || sys_get_timer().now - self.last_activity < 600_000;
+                let powered = status.flags & wireless_api::USB_POWER != 0
+                    || (status.flags & wireless_api::VALID != 0
+                        && status.flags & (wireless_api::LOW | wireless_api::CRITICAL) == 0);
+                (
+                    status.connected,
+                    status.leds,
+                    u8::from(status.connected != 0 && recent && powered),
+                )
             }
-            Transport::Off => (0, input_api::LedReport::default()),
+            Transport::Off => (0, input_api::LedReport::default(), 0),
         };
         Ok(input_api::Status {
             awake,
             leds,
             transport: self.mode.active as u8,
-            reserved: 0,
+            backlight,
         })
     }
 

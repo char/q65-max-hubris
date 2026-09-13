@@ -10,7 +10,7 @@ pub struct Status {
     pub awake: u8,
     pub transport: u8,
     pub leds: LedReport,
-    pub reserved: u8,
+    pub backlight: u8,
 }
 
 #[allow(clippy::pedantic, reason = "generated")]

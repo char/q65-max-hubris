@@ -1,3 +1,4 @@
+use crate::power::Battery;
 use crate::reports::ReportQueue;
 use crate::{Ack, Connection, Event, Packet};
 use hid::{ConsumerReport, KeyboardReport, LedReport, Reports};
@@ -9,6 +10,7 @@ pub enum State {
     Name,
     Configure,
     Disabled,
+    LowBattery,
     WakeLow,
     Waking,
     Connecting,
@@ -39,6 +41,8 @@ pub struct Link {
     pub leds: LedReport,
     pub errors: u32,
     pub resets: u32,
+    pub battery: Battery,
+    next_battery: u64,
     enabled: bool,
     pairing: bool,
     deadline: u64,
@@ -59,6 +63,8 @@ impl Default for Link {
             leds: LedReport::default(),
             errors: 0,
             resets: 0,
+            battery: Battery::default(),
+            next_battery: 3000,
             enabled: false,
             pairing: false,
             deadline: 0,
@@ -221,7 +227,21 @@ impl Link {
                     }
                 }
             }
-            Event::Battery(_) => {}
+            Event::Battery(raw) => {
+                self.battery.sample(raw, now);
+                if self.battery.critical {
+                    self.pairing = false;
+                    if self.state == State::Connected {
+                        self.start_release(now);
+                    } else if matches!(
+                        self.state,
+                        State::Connecting | State::Pairing | State::WakeLow
+                    ) {
+                        self.state = State::DisconnectLow;
+                        self.deadline = now;
+                    }
+                }
+            }
         }
     }
 
@@ -230,7 +250,19 @@ impl Link {
         Packet::command(self.sequence, payload, ack).unwrap()
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "keep timed state transitions together"
+    )]
     pub fn step(&mut self, now: u64) -> Option<Action> {
+        if self.state == State::LowBattery && !self.battery.critical {
+            self.state = if self.enabled {
+                State::WakeLow
+            } else {
+                State::Disabled
+            };
+            self.deadline = now;
+        }
         // PA4 is held low during these states: clocking even an event read would
         // turn a wake pulse into an unintended radio transaction.
         if now < self.deadline
@@ -244,6 +276,16 @@ impl Link {
         if self.connection_ack && self.can_read() {
             self.connection_ack = false;
             return Some(Action::Send(self.packet(&crate::CONNECTION_ACK, false)));
+        }
+        if now >= self.next_battery
+            && self.in_flight.is_none()
+            && matches!(
+                self.state,
+                State::Connected | State::Connecting | State::Pairing
+            )
+        {
+            self.next_battery = now + 3000;
+            return Some(Action::Send(self.packet(&crate::BATTERY_QUERY, false)));
         }
         if self.state == State::Releasing && now >= self.deadline {
             self.state = if self.pairing {
@@ -264,7 +306,8 @@ impl Link {
             }
             State::Booting => {
                 self.state = State::Name;
-                self.deadline = now + 500;
+                // QMK also handles CKBT51 variants whose first boot event takes nearly a second.
+                self.deadline = now + 1000;
                 Some(Action::Reset(false))
             }
             State::Name => {
@@ -273,7 +316,7 @@ impl Link {
                 Some(Action::Send(self.packet(crate::NAME, false)))
             }
             State::Configure => {
-                self.state = if self.enabled {
+                self.state = if self.enabled && !self.battery.critical {
                     State::WakeLow
                 } else {
                     State::DisconnectLow
@@ -283,14 +326,14 @@ impl Link {
                     self.packet(&crate::configuration(7200), false),
                 ))
             }
-            State::Disabled => None,
+            State::Disabled | State::LowBattery => None,
             State::WakeLow => {
                 self.state = State::Waking;
                 self.deadline = now + 310;
                 Some(Action::Pulse(10))
             }
             State::Waking => {
-                if !self.enabled {
+                if !self.enabled || self.battery.critical {
                     self.state = State::DisconnectLow;
                     self.deadline = now;
                     return None;
@@ -322,7 +365,9 @@ impl Link {
                 Some(Action::Pulse(100))
             }
             State::Disconnecting => {
-                self.state = if self.enabled {
+                self.state = if self.battery.critical {
+                    State::LowBattery
+                } else if self.enabled {
                     State::WakeLow
                 } else {
                     State::Disabled
@@ -399,6 +444,7 @@ impl Link {
             State::ResetLow
                 | State::Booting
                 | State::Disabled
+                | State::LowBattery
                 | State::Waking
                 | State::Disconnecting
         )
@@ -417,13 +463,13 @@ mod tests {
         assert!(link.step(0).is_none());
         assert!(!link.can_read());
         assert!(matches!(link.step(1), Some(Action::Reset(false))));
-        assert!(link.step(500).is_none());
-        assert!(matches!(link.step(501), Some(Action::Send(_))));
-        assert!(matches!(link.step(504), Some(Action::Send(_))));
-        assert!(matches!(link.step(507), Some(Action::Pulse(10))));
+        assert!(link.step(1000).is_none());
+        assert!(matches!(link.step(1001), Some(Action::Send(_))));
+        assert!(matches!(link.step(1004), Some(Action::Send(_))));
+        assert!(matches!(link.step(1007), Some(Action::Pulse(10))));
         assert!(!link.can_read());
-        assert!(link.step(816).is_none());
-        let Some(Action::Send(packet)) = link.step(817) else {
+        assert!(link.step(1316).is_none());
+        let Some(Action::Send(packet)) = link.step(1317) else {
             panic!()
         };
         assert_eq!(&packet.bytes()[9..13], &crate::CONNECT);
@@ -561,5 +607,46 @@ mod tests {
         assert!(link.step(309).is_none());
         assert!(link.step(310).is_none());
         assert!(matches!(link.step(311), Some(Action::Pulse(100))));
+    }
+
+    #[test]
+    fn critical_battery_releases_then_stays_quiet_until_usb_returns() {
+        let mut link = Link {
+            enabled: true,
+            state: State::Connected,
+            ..Link::default()
+        };
+        link.event(Event::Battery(1500), 0);
+        link.event(Event::Battery(1500), 60_000);
+        let mut releases = Vec::new();
+        for now in 60_000..60_200 {
+            match link.step(now) {
+                Some(Action::Send(packet)) => {
+                    let bytes = packet.bytes();
+                    if bytes[9] == 0x23 {
+                        assert_eq!(releases, [0x12, 0x13]);
+                    } else {
+                        assert!(bytes[10..bytes.len() - 2].iter().all(|&b| b == 0));
+                        releases.push(bytes[9]);
+                    }
+                    link.event(
+                        Event::Ack {
+                            sequence: bytes[8],
+                            command: bytes[9],
+                            result: Ack::Success,
+                        },
+                        now,
+                    );
+                }
+                Some(Action::Pulse(100)) => link.pulse_started(now),
+                None => {}
+                _ => panic!("unexpected action"),
+            }
+        }
+        assert_eq!(link.state, State::LowBattery);
+        assert!(!link.can_read());
+        assert!(link.step(70_000).is_none());
+        link.battery.power(true, true);
+        assert!(matches!(link.step(70_001), Some(Action::Pulse(10))));
     }
 }

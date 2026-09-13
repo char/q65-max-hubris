@@ -12,7 +12,6 @@ num-traits.workspace = true
 stm32f4.workspace = true
 spi-api = { path = "../../lib/spi-api" }
 userlib.workspace = true
-util = { path = "../../lib/util" }
 zerocopy.workspace = true
 zerocopy-derive.workspace = true
 

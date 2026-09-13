@@ -17,7 +17,8 @@ BSRR rather than read/modify/write of shared GPIO registers.
 
 Validation: `cargo xtask`, `cargo test -p hid`, and `cargo test -p usb-device` pass.
 The existing keyboard test `debounce_believes_the_first_edge_and_ignores_bounces`
-fails at `lib/keyboard/src/lib.rs:93`; SPI changes do not touch that code.
+fails in `lib/keyboard/src/lib.rs`; its debounce implementation and assertions
+are unchanged.
 
 Hardware checks still required:
 
@@ -41,16 +42,16 @@ The wireless task owns PB1 (active-low event input) and PC4 (reset). It exposes
 report submission, enable/disable, pairing, and connection/LED/error status.
 The timed link state machine is host-testable. ACK loss retransmits the same
 sequence and packet up to three attempts, then resets/reconfigures the module.
-PB1 is polled at 1 ms for bring-up; EXTI and lower idle polling rates are future
-power work.
+PB1 is polled at 1 ms while active; disabled/low-battery service ticks are 100 ms.
+EXTI and coordinated idle sleep remain future work.
 
 PA4 wake/disconnect pulses are timed by the SPI server. During the low pulse no
 client may clock SPI; requests return false and RGB sleeps briefly before retry.
 The SPI timer deasserts PA4 even if wireless stops running. The radio's subsequent
 300 ms wake delay does not monopolise the bus.
 
-This stage leaves routing wired-only; the wireless service is disabled until
-its enable API is called. No hardware connection or RF performance is yet verified.
+The service starts disabled and input enables it according to the physical switch.
+No hardware connection or RF performance is yet verified.
 
 ## Transport routing and delivery
 
@@ -61,7 +62,7 @@ sends nothing until a valid selection has been stable for 100 ms.
 Input owns routing. RGB queries input for the selected host's connection and LED
 state rather than assuming USB. The existing keymap is unchanged. Pairing is
 available through `Wireless::pair`; a physical shortcut still needs choosing.
-No pairing records are erased during normal connection or module reset.
+Normal connection and module reset never issue the factory-reset/pairing-clear command.
 
 Wireless uses the module's 20-byte NKRO format and three consumer usage slots.
 A 64-snapshot queue preserves quick taps, including the encoder's immediate
@@ -73,8 +74,51 @@ Leaving wireless drains keyboard and consumer releases before disconnecting, wit
 a 100 ms escape deadline if the module stops acknowledging. USB releases are
 submitted to the existing USB service before changing routes.
 
-Validation: firmware builds, 14 radio tests and 2 mode-switch tests pass; all
+Validation: firmware builds, 18 radio/power tests and 2 mode-switch tests pass; all
 existing HID/USB tests and the other 14 keyboard tests pass. Hardware checks remain:
 rapid taps, encoder rotation, >6 held keys, held-key transport changes, pairing,
 replugging the dongle, and RGB running concurrently. Capture ACKs to verify the
 sequence-byte interpretation and measure effective report cadence/latency.
+
+## Battery and lighting policy
+
+PB0 senses USB power and PB13 charging (both active low, pulled up). The module
+is queried for divider voltage every three seconds while connecting/connected.
+The board's 560k/499k divider and QMK's approximate 3300/3500/4100 mV percentage
+curve are used. `Wireless::status` exposes voltage, percentage, USB/charging,
+low/critical flags, and a validity flag; voltage is stale after ten seconds.
+
+On battery, lights stay off without a recent valid measurement. Nine seconds
+below 3500 mV disables lighting; 3600 mV clears that condition. Sustained voltage
+below 3300 mV for sixty seconds releases keys and disconnects the radio. This
+condition latches until USB power returns. These thresholds need validation
+against measured battery voltage under LED load, and are not battery protection.
+
+Wireless lighting also turns off after ten minutes without input. PB7 then puts
+both LED drivers into hardware shutdown. Wake restores their registers after a
+100 ms settling delay; transport changes force reinitialisation to handle the
+LED supply brown-out noted by QMK. Matrix scanning continues throughout.
+Entering the ROM bootloader gives the radio 250 ms to release/disconnect first.
+
+### Not implemented: coordinated MCU STOP sleep
+
+Use USB power for initial testing. The STM32 still scans at 1 ms and runs its
+48 MHz clock; low-battery radio disconnect does **not** shut down the MCU.
+Do not treat this as finished unattended battery operation or a battery-life claim.
+
+STOP needs kernel/BSP support, not just a driver toggling SLEEPDEEP:
+
+1. Quiesce input, USB, RGB, wireless and SPI; ensure no report, chip select, or
+   lease is in flight. Resolve pending tap-holds and refuse sleep with held keys.
+2. Arm row wake interrupts with columns driven low, plus radio, mode switch,
+   encoder and USB-power wake sources. Check pending levels before sleeping.
+3. Establish an always-on elapsed-time source (PC14/PC15 are matrix columns, so
+   an LSE crystal cannot simply be assumed), and integrate elapsed sleep into
+   the kernel's timer bookkeeping. SysTick alone stops in STOP.
+4. Enter/leave STOP through privileged kernel/BSP code, restore the clock tree
+   before any task runs, restore GPIO/peripherals, and retain the waking key's
+   press/release through radio reconnect rather than dropping it as offline input.
+5. Measure active/idle/sleep current and stress cold boot, USB insertion/removal,
+   timer deadlines, held keys, repeated wake, and fault recovery on hardware.
+
+No deep-sleep register writes or kernel dependency changes have been made.

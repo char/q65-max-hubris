@@ -52,7 +52,7 @@ priority = 3
 start = true
 stacksize = 4096
 max-sizes = { flash = 16384, ram = 8192 }
-uses = ["gpioa", "gpiob", "gpioc"]
+uses = ["gpiob", "gpioc"]
 task-slots = ["spi"]
 notifications = ["timer"]
 
