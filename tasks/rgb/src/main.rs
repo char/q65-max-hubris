@@ -12,7 +12,7 @@ use userlib::{hl::sleep_until, sys_get_timer, task_slot};
 task_slot!(USB, usb);
 task_slot!(INPUT, input);
 
-const FRAME_MS: u64 = 16;
+const FRAME_MS: u64 = 8;
 
 #[unsafe(export_name = "main")]
 fn main() -> ! {
