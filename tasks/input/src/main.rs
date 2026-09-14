@@ -81,12 +81,18 @@ impl NotificationHandler for Input {
             Transport::Wireless => self.wireless.set_reports(reports),
             Transport::Off => {}
         };
-        if let Some(Command::EnterBootloader) = self.keymap.update(self.keys, start, send) {
-            self.usb.set_reports(Reports::default());
-            self.wireless.enable(false);
-            // Give the radio's release/disconnect sequence time before entering ROM.
-            userlib::hl::sleep_for(250);
-            jefe_api::enter_bootloader(JEFE.get_task_id());
+        match self.keymap.update(self.keys, start, send) {
+            Some(Command::EnterBootloader) => {
+                self.usb.set_reports(Reports::default());
+                self.wireless.enable(false);
+                // Give the radio's release/disconnect sequence time before entering ROM.
+                userlib::hl::sleep_for(250);
+                jefe_api::enter_bootloader(JEFE.get_task_id());
+            }
+            Some(Command::PairWireless) if self.mode.active == Transport::Wireless => {
+                let _ = self.wireless.pair();
+            }
+            _ => {}
         }
         let encoder = matrix::encoder_state();
         if let Some(rotation) = self.encoder.update(encoder) {

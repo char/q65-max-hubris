@@ -18,12 +18,14 @@ pub enum Binding {
     /// key when tapped, layer while held (200ms)
     TapHold(Key, Layer),
     Bootloader,
+    PairWireless,
 }
 
 /// Something for the task to do that isn't a report.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Command {
     EnterBootloader,
+    PairWireless,
 }
 
 use Binding::{Key as Kc, Media, Mo, TapHold, Tg};
@@ -70,7 +72,8 @@ const fn same(a: Binding, b: Binding) -> bool {
         (TapHold(a, x), TapHold(b, y)) => a as u8 == b as u8 && x as u8 == y as u8,
         (Binding::Empty, Binding::Empty)
         | (Binding::Transparent, Binding::Transparent)
-        | (Binding::Bootloader, Binding::Bootloader) => true,
+        | (Binding::Bootloader, Binding::Bootloader)
+        | (Binding::PairWireless, Binding::PairWireless) => true,
         _ => false,
     }
 }
@@ -192,6 +195,7 @@ impl Keymap {
                 }
             }
             Binding::Bootloader if event.pressed => self.command = Some(Command::EnterBootloader),
+            Binding::PairWireless if event.pressed => self.command = Some(Command::PairWireless),
             _ => {}
         }
     }
@@ -407,6 +411,39 @@ mod tests {
         assert_eq!(command, Some(Command::EnterBootloader));
         assert_eq!(emitted, []);
         assert_eq!(scan(&mut keymap, &[F22_KEY], 4), []);
+    }
+
+    #[test]
+    fn ext_f21_pairs_once_on_press_without_sending_f21() {
+        const F21_KEY: (usize, usize) = (3, 0);
+        let mut keymap = Keymap::default();
+        scan(&mut keymap, &[NAV_KEY], 0);
+        scan(&mut keymap, &[NAV_KEY, CAPS], 1);
+        scan(&mut keymap, &[NAV_KEY], 2);
+        let mut matrix = Matrix::default();
+        matrix[NAV_KEY.0] |= 1 << NAV_KEY.1;
+        matrix[F21_KEY.0] |= 1 << F21_KEY.1;
+        let mut emitted = Vec::new();
+        assert_eq!(
+            keymap.update(matrix, 3, |report| emitted.push(report)),
+            Some(Command::PairWireless)
+        );
+        assert_eq!(
+            keymap.update(matrix, 4, |report| emitted.push(report)),
+            None
+        );
+        matrix[NAV_KEY.0] = 0;
+        assert_eq!(
+            keymap.update(matrix, 5, |report| emitted.push(report)),
+            None
+        );
+        matrix[F21_KEY.0] = 0;
+        assert_eq!(
+            keymap.update(matrix, 6, |report| emitted.push(report)),
+            None
+        );
+        assert_eq!(emitted, []);
+        assert_eq!(scan(&mut keymap, &[F21_KEY], 7), [keys(&[Key::F21])]);
     }
 
     #[test]

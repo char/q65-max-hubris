@@ -61,8 +61,9 @@ unsupported and sends no reports; 00 is ignored as a switch transition. Startup
 sends nothing until a valid selection has been stable for 100 ms.
 
 Input owns routing. RGB queries input for the selected host's connection and LED
-state rather than assuming USB. The existing keymap is unchanged. Pairing is
-available through `Wireless::pair`; a physical shortcut still needs choosing.
+state rather than assuming USB. Ext + F21 (above the DFU key) requests 2.4 GHz
+pairing on press when the mode switch selects wireless. Holding or releasing it
+does not retrigger pairing. Base-layer F21 and Ext + F22 (DFU) are unchanged.
 Normal connection and module reset never issue the factory-reset/pairing-clear command.
 
 Wireless uses the module's 20-byte NKRO format and three consumer usage slots.
@@ -75,7 +76,7 @@ Leaving wireless drains keyboard and consumer releases before disconnecting, wit
 a 100 ms escape deadline if the module stops acknowledging. USB releases are
 submitted to the existing USB service before changing routes.
 
-Validation: firmware builds and 54 host tests pass across HID, USB, keyboard and
+Validation: firmware builds and 55 host tests pass across HID, USB, keyboard and
 radio/power, excluding the pre-existing debounce failure noted above. Hardware checks remain:
 rapid taps, encoder rotation, >6 held keys, held-key transport changes, pairing,
 replugging the dongle, and RGB running concurrently. Capture ACKs to verify the
