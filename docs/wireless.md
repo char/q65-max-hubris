@@ -42,7 +42,8 @@ The wireless task owns PB1 (active-low event input) and PC4 (reset). It exposes
 report submission, enable/disable, pairing, and connection/LED/error status.
 The timed link state machine is host-testable. ACK loss retransmits the same
 sequence and packet up to three attempts, then resets/reconfigures the module.
-PB1 is polled at 1 ms while active; disabled/low-battery service ticks are 100 ms.
+PB1 is polled at 1 ms while busy, or 8 ms when connected and quiet on battery.
+Disabled/low-battery service ticks remain 100 ms.
 EXTI and coordinated idle sleep remain future work.
 
 PA4 wake/disconnect pulses are timed by the SPI server. During the low pulse no
@@ -74,8 +75,8 @@ Leaving wireless drains keyboard and consumer releases before disconnecting, wit
 a 100 ms escape deadline if the module stops acknowledging. USB releases are
 submitted to the existing USB service before changing routes.
 
-Validation: firmware builds, 18 radio/power tests and 2 mode-switch tests pass; all
-existing HID/USB tests and the other 14 keyboard tests pass. Hardware checks remain:
+Validation: firmware builds and 54 host tests pass across HID, USB, keyboard and
+radio/power, excluding the pre-existing debounce failure noted above. Hardware checks remain:
 rapid taps, encoder rotation, >6 held keys, held-key transport changes, pairing,
 replugging the dongle, and RGB running concurrently. Capture ACKs to verify the
 sequence-byte interpretation and measure effective report cadence/latency.
@@ -100,10 +101,34 @@ both LED drivers into hardware shutdown. Wake restores their registers after a
 LED supply brown-out noted by QMK. Matrix scanning continues throughout.
 Entering the ROM bootloader gives the radio 250 ms to release/disconnect first.
 
+### Adaptive polling
+
+With USB power absent, input scans every 8 ms after thirty seconds of inactivity.
+Any sampled raw key activity or encoder edge restores 1 ms scanning immediately.
+Held switches, unresolved tap-holds/buffered key events, and partial encoder detents
+keep scanning fast. USB power keeps the scan interval at 1 ms, even if the host
+is suspended. These are delays after a scan, not guaranteed end-to-end periods.
+
+Connected wireless slows to 8 ms whenever its report queue and in-flight/connection
+ACK work are empty on battery. Report submission, enable, and pairing requests
+rearm its timer immediately. Pending reports, retries, an asserted PB1, and control
+sequences retain 1 ms polling; wake/reset/disconnect deadlines are not slowed.
+
+RGB checks at 100 ms when dark on battery, otherwise retaining its 16 ms frame
+period. Resuming the lights can therefore take up to another 100 ms to notice
+activity, plus the existing LED-driver settling delay; this does not delay typing.
+
+The first idle input has roughly up to 8 ms detection latency plus scan/scheduling
+time. A tap or complete encoder detent wholly between polls can be missed.
+Hardware checks: wait thirty seconds on battery, exercise short taps and slow/fast
+initial knob movement, hold Fn across the idle threshold, reconnect USB while idle,
+and compare current draw with the backlight off. Power savings are not yet measured.
+
 ### Not implemented: coordinated MCU STOP sleep
 
-Use USB power for initial testing. The STM32 still scans at 1 ms and runs its
-48 MHz clock; low-battery radio disconnect does **not** shut down the MCU.
+Use USB power for initial testing. The STM32 still scans periodically and runs its
+48 MHz clock; adaptive polling and low-battery radio disconnect do **not** shut down
+the MCU.
 Do not treat this as finished unattended battery operation or a battery-life claim.
 
 STOP needs kernel/BSP support, not just a driver toggling SLEEPDEEP:

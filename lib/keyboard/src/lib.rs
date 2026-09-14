@@ -1,10 +1,12 @@
 #![cfg_attr(not(test), no_std)]
 
+mod activity;
 mod keymap;
 mod layout;
 pub mod lighting;
 pub mod transport;
 
+pub use activity::Activity;
 pub use keymap::{Command, Keymap};
 
 pub const ROWS: usize = 5;

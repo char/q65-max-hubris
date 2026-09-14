@@ -438,6 +438,22 @@ impl Link {
     }
 
     #[must_use]
+    pub fn poll_interval(&self, now: u64) -> u64 {
+        match self.state {
+            State::Disabled | State::LowBattery => 100,
+            State::Connected
+                if self.battery.flags(now) & crate::power::USB_POWER == 0
+                    && self.in_flight.is_none()
+                    && !self.connection_ack
+                    && self.reports.front().is_none() =>
+            {
+                8
+            }
+            _ => 1,
+        }
+    }
+
+    #[must_use]
     pub fn can_read(&self) -> bool {
         !matches!(
             self.state,
@@ -648,5 +664,102 @@ mod tests {
         assert!(link.step(70_000).is_none());
         link.battery.power(true, true);
         assert!(matches!(link.step(70_001), Some(Action::Pulse(10))));
+    }
+
+    #[test]
+    fn quiet_connected_polling_slows_only_on_battery() {
+        let mut link = Link {
+            state: State::Connected,
+            reports: ReportQueue::default(),
+            ..Link::default()
+        };
+        assert_eq!(link.poll_interval(100), 8);
+        link.battery.power(true, false);
+        assert_eq!(link.poll_interval(100), 1);
+        link.battery.power(false, false);
+        assert_eq!(link.poll_interval(100), 8);
+
+        link.event(
+            Event::Connection {
+                state: Connection::Connected,
+                host: crate::HOST_2P4,
+            },
+            101,
+        );
+        assert_eq!(link.poll_interval(101), 1);
+    }
+
+    #[test]
+    fn queued_reports_and_unacknowledged_retries_keep_polling_fast() {
+        let mut link = Link {
+            enabled: true,
+            state: State::Connected,
+            reports: ReportQueue::default(),
+            ..Link::default()
+        };
+        assert_eq!(link.poll_interval(100), 8);
+        let mut pressed = Reports::default();
+        pressed.keyboard.press(hid::Key::A);
+        link.set_reports(pressed);
+        link.set_reports(Reports::default());
+        assert_eq!(link.poll_interval(100), 1);
+        let Some(Action::Send(first)) = link.step(100) else {
+            panic!()
+        };
+        assert_eq!(link.poll_interval(105), 1);
+        link.event(
+            Event::Ack {
+                sequence: first.bytes()[8],
+                command: first.bytes()[9],
+                result: Ack::Full,
+            },
+            105,
+        );
+        assert_eq!(link.poll_interval(110), 1);
+
+        let mut keyboards = Vec::new();
+        for now in 116..200 {
+            if let Some(Action::Send(packet)) = link.step(now) {
+                assert_eq!(link.poll_interval(now), 1);
+                let bytes = packet.bytes();
+                if bytes[9] == 0x12 {
+                    keyboards.push(bytes[11]);
+                }
+                link.event(
+                    Event::Ack {
+                        sequence: bytes[8],
+                        command: bytes[9],
+                        result: Ack::Success,
+                    },
+                    now,
+                );
+            }
+        }
+        assert_eq!(keyboards, [0x10, 0]);
+        assert_eq!(link.poll_interval(200), 8);
+    }
+
+    #[test]
+    fn control_sequences_never_use_the_connected_idle_rate() {
+        for state in [
+            State::ResetLow,
+            State::Booting,
+            State::Name,
+            State::Configure,
+            State::WakeLow,
+            State::Waking,
+            State::Connecting,
+            State::Pairing,
+            State::Releasing,
+            State::DisconnectLow,
+            State::Disconnecting,
+        ] {
+            let link = Link {
+                state,
+                reports: ReportQueue::default(),
+                ..Link::default()
+            };
+            assert_eq!(link.poll_interval(100), 1, "{state:?}");
+        }
     }
 }

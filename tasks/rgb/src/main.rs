@@ -48,6 +48,11 @@ fn main() -> ! {
             lighting.clear();
             shown = None;
         }
-        sleep_until(now + FRAME_MS);
+        let interval = if status.on_battery != 0 && status.backlight == 0 {
+            100
+        } else {
+            FRAME_MS
+        };
+        sleep_until(now + interval);
     }
 }

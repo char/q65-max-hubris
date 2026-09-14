@@ -136,6 +136,13 @@ impl Default for Keymap {
 }
 
 impl Keymap {
+    #[must_use]
+    pub fn is_idle(&self) -> bool {
+        self.previous.iter().all(|&row| row == 0)
+            && self.pending.is_none()
+            && self.buffered.len == 0
+    }
+
     fn layer_active(&self, layer: Layer) -> bool {
         self.toggled[layer as usize] || self.held.contains(&Mo(layer))
     }
@@ -411,5 +418,40 @@ mod tests {
         let mut up = keys(&[A]);
         up.consumer.press(VolumeUp);
         assert_eq!(emitted, [up, keys(&[A])]);
+    }
+
+    #[test]
+    fn tap_holds_and_layers_are_busy_even_without_a_hid_report() {
+        let mut keymap = Keymap::default();
+        let mut activity = crate::Activity::new(0, 3);
+        assert!(keymap.is_idle());
+        assert_eq!(
+            activity.scan_interval(30_000, true, !keymap.is_idle(), 3),
+            8
+        );
+
+        scan(&mut keymap, &[CAPS], 30_008);
+        assert_eq!(keymap.report(), Reports::default());
+        assert!(!keymap.is_idle());
+        assert_eq!(
+            activity.scan_interval(30_008, true, !keymap.is_idle(), 3),
+            1
+        );
+
+        scan(&mut keymap, &[CAPS], 61_000);
+        assert_eq!(keymap.report(), Reports::default());
+        assert_eq!(
+            activity.scan_interval(61_000, true, !keymap.is_idle(), 3),
+            1
+        );
+        scan(&mut keymap, &[], 61_001);
+        assert!(keymap.is_idle());
+
+        scan(&mut keymap, &[CAPS], 62_000);
+        scan(&mut keymap, &[CAPS, A_KEY], 62_001);
+        assert_eq!(keymap.report(), Reports::default());
+        assert!(!keymap.is_idle());
+        scan(&mut keymap, &[], 62_002);
+        assert!(keymap.is_idle());
     }
 }

@@ -93,15 +93,13 @@ impl NotificationHandler for Wireless {
                 self.link.failed(sys_get_timer().now);
             }
         }
-        let interval = if matches!(self.link.state, State::Disabled | State::LowBattery) {
-            100
-        } else {
+        let now = sys_get_timer().now;
+        let interval = if self.link.can_read() && self.gpiob.idr.read().idr1().bit_is_clear() {
             1
+        } else {
+            self.link.poll_interval(now)
         };
-        sys_set_timer(
-            Some(sys_get_timer().now + interval),
-            notifications::TIMER_MASK,
-        );
+        sys_set_timer(Some(now + interval), notifications::TIMER_MASK);
     }
 }
 
@@ -118,11 +116,13 @@ impl idl::InOrderWirelessImpl for Wireless {
         reports: Reports,
     ) -> Result<(), RequestError<Infallible>> {
         self.link.set_reports(reports);
+        sys_set_timer(Some(sys_get_timer().now), notifications::TIMER_MASK);
         Ok(())
     }
 
     fn pair(&mut self, _: &RecvMessage) -> Result<(), RequestError<Infallible>> {
         self.link.pair(sys_get_timer().now);
+        sys_set_timer(Some(sys_get_timer().now), notifications::TIMER_MASK);
         Ok(())
     }
 

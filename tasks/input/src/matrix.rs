@@ -96,6 +96,11 @@ pub fn mode_switch() -> u8 {
     (((pins >> 9) & 1) << 1 | ((pins >> 10) & 1)) as u8
 }
 
+pub fn usb_power_connected() -> bool {
+    // PB0 is configured by the higher-priority wireless task.
+    Pin(GPIOB, 0).is_low()
+}
+
 pub fn scan() -> Matrix {
     let mut matrix = Matrix::default();
     for (column, pin) in COLUMN_PINS.into_iter().enumerate() {

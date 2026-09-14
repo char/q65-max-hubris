@@ -5,7 +5,7 @@ mod matrix;
 
 use idol_runtime::{NotificationHandler, RequestError};
 use keyboard::transport::{ModeSwitch, Transport};
-use keyboard::{Command, Debouncer, Encoder, Keymap, Matrix};
+use keyboard::{Activity, Command, Debouncer, Encoder, Keymap, Matrix};
 use usb_api::{Reports, Usb};
 use userlib::{RecvMessage, sys_get_timer, sys_set_timer, task_slot};
 use wireless_api::Wireless;
@@ -18,15 +18,16 @@ task_slot!(WIRELESS, wireless);
 fn main() -> ! {
     // Higher-priority peripheral tasks finish GPIO configuration before matrix init.
     matrix::init();
+    let encoder = matrix::encoder_state();
     let mut input = Input {
         debouncer: Debouncer::default(),
         keymap: Keymap::default(),
-        encoder: Encoder::new(matrix::encoder_state()),
+        encoder: Encoder::new(encoder),
         usb: Usb::from(USB.get_task_id()),
         wireless: Wireless::from(WIRELESS.get_task_id()),
         mode: ModeSwitch::default(),
         keys: Matrix::default(),
-        last_activity: sys_get_timer().now,
+        activity: Activity::new(sys_get_timer().now, encoder),
     };
     let mut incoming = [0; idl::INCOMING_SIZE];
     sys_set_timer(Some(sys_get_timer().now), notifications::TIMER_MASK);
@@ -43,7 +44,7 @@ struct Input {
     wireless: Wireless,
     mode: ModeSwitch,
     keys: Matrix,
-    last_activity: u64,
+    activity: Activity,
 }
 
 impl NotificationHandler for Input {
@@ -54,8 +55,8 @@ impl NotificationHandler for Input {
     fn handle_notification(&mut self, _: userlib::NotificationBits) {
         let start = sys_get_timer().now;
         let previous = self.mode.active;
-        if let Some(transport) = self.mode.update(matrix::mode_switch(), start) {
-            self.last_activity = start;
+        let transport_change = self.mode.update(matrix::mode_switch(), start);
+        if let Some(transport) = transport_change {
             match previous {
                 Transport::Usb => self.usb.set_reports(Reports::default()),
                 Transport::Wireless => self.wireless.enable(false),
@@ -71,10 +72,9 @@ impl NotificationHandler for Input {
                 Transport::Off => {}
             }
         }
-        let keys = self.debouncer.update(matrix::scan(), start);
-        if keys != self.keys {
-            self.last_activity = start;
-        }
+        let raw = matrix::scan();
+        let keys = self.debouncer.update(raw, start);
+        let keys_changed = keys != self.keys;
         self.keys = keys;
         let send = |reports: Reports| match self.mode.active {
             Transport::Usb => self.usb.set_reports(reports),
@@ -88,14 +88,22 @@ impl NotificationHandler for Input {
             userlib::hl::sleep_for(250);
             jefe_api::enter_bootloader(JEFE.get_task_id());
         }
-        if let Some(rotation) = self.encoder.update(matrix::encoder_state()) {
-            self.last_activity = start;
+        let encoder = matrix::encoder_state();
+        if let Some(rotation) = self.encoder.update(encoder) {
             self.keymap.turn(rotation, send);
         }
-        // One scan per millisecond. If we ever fall behind, skip the missed ticks rather than
-        // scanning in a burst to catch up.
+        let interval = self.activity.scan_interval(
+            start,
+            !matrix::usb_power_connected(),
+            transport_change.is_some()
+                || keys_changed
+                || raw.iter().any(|&row| row != 0)
+                || !self.keymap.is_idle(),
+            encoder,
+        );
+        // If we ever fall behind, skip the missed ticks rather than scanning in a burst to catch up.
         // The deadline must be in the future or an overrun can starve the RGB task.
-        let next = sys_get_timer().now + 1;
+        let next = sys_get_timer().now + interval;
         sys_set_timer(Some(next), notifications::TIMER_MASK);
     }
 }
@@ -113,7 +121,7 @@ impl idl::InOrderInputImpl for Input {
             Transport::Wireless => {
                 let status = self.wireless.status();
                 let recent = self.keys.iter().any(|&row| row != 0)
-                    || sys_get_timer().now - self.last_activity < 600_000;
+                    || sys_get_timer().now - self.activity.last < 600_000;
                 let powered = status.flags & wireless_api::USB_POWER != 0
                     || (status.flags & wireless_api::VALID != 0
                         && status.flags & (wireless_api::LOW | wireless_api::CRITICAL) == 0);
@@ -130,6 +138,7 @@ impl idl::InOrderInputImpl for Input {
             leds,
             transport: self.mode.active as u8,
             backlight,
+            on_battery: u8::from(!matrix::usb_power_connected()),
         })
     }
 
