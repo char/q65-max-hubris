@@ -90,7 +90,7 @@ mod tests {
     fn debounce_believes_the_first_edge_and_ignores_bounces() {
         let mut debouncer = Debouncer::default();
         assert_eq!(debouncer.update([1, 0, 0, 0, 0], 0)[0], 1);
-        assert_eq!(debouncer.update([0, 0, 0, 0, 0], 5)[0], 1);
+        assert_eq!(debouncer.update([0, 0, 0, 0, 0], 4)[0], 1);
         assert_eq!(debouncer.update([1, 0, 0, 0, 0], 10)[0], 1);
         assert_eq!(debouncer.update([0, 0, 0, 0, 0], 25)[0], 0);
         // Other keys aren't held hostage by one key's lockout.

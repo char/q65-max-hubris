@@ -48,7 +48,15 @@ impl idl::InOrderUsbImpl for Usb {
         _: &RecvMessage,
         reports: Reports,
     ) -> Result<(), RequestError<core::convert::Infallible>> {
-        self.set_reports(reports);
+        let previous = core::mem::replace(&mut self.device.reports, reports);
+        if self.device.configured() {
+            if reports.keyboard != previous.keyboard {
+                self.refresh(Interface::Keyboard);
+            }
+            if reports.consumer != previous.consumer {
+                self.refresh(Interface::Consumer);
+            }
+        }
         Ok(())
     }
 
@@ -91,9 +99,12 @@ struct Usb {
 /// into a single send of the latest state when it completes; with debouncing in front of us, no
 /// key transition is brief enough to be lost that way.
 #[derive(Clone, Copy, Default)]
-struct Pending {
-    in_flight: bool,
-    stale: bool,
+enum Pending {
+    #[default]
+    Idle,
+    InFlight {
+        stale: bool,
+    },
 }
 
 impl Usb {
@@ -101,7 +112,7 @@ impl Usb {
         match event {
             Event::Reset => {
                 self.device.reset();
-                self.pending = [Pending::default(); 2];
+                self.pending = [Pending::Idle; 2];
                 self.suspended = false;
             }
             Event::Setup(setup) => {
@@ -114,8 +125,9 @@ impl Usb {
             }
             Event::InComplete(endpoint) => {
                 if let Some(interface) = Interface::for_endpoint(endpoint) {
-                    self.pending[interface as usize].in_flight = false;
-                    if self.pending[interface as usize].stale {
+                    let done =
+                        core::mem::replace(&mut self.pending[interface as usize], Pending::Idle);
+                    if let Pending::InFlight { stale: true } = done {
                         self.send(interface);
                     }
                 }
@@ -163,38 +175,21 @@ impl Usb {
     fn open(&mut self, interface: Interface) {
         self.otg
             .open_in(interface.endpoint(), interface.max_packet());
-        self.pending[interface as usize] = Pending::default();
+        self.pending[interface as usize] = Pending::Idle;
         self.send(interface);
     }
 
-    fn set_reports(&mut self, reports: Reports) {
-        let previous = core::mem::replace(&mut self.device.reports, reports);
-        if !self.device.configured() {
-            return;
-        }
-        if reports.keyboard != previous.keyboard {
-            self.refresh(Interface::Keyboard);
-        }
-        if reports.consumer != previous.consumer {
-            self.refresh(Interface::Consumer);
-        }
-    }
-
     fn refresh(&mut self, interface: Interface) {
-        if self.pending[interface as usize].in_flight {
-            self.pending[interface as usize].stale = true;
-        } else {
-            self.send(interface);
+        match &mut self.pending[interface as usize] {
+            Pending::InFlight { stale } => *stale = true,
+            Pending::Idle => self.send(interface),
         }
     }
 
     fn send(&mut self, interface: Interface) {
         self.otg
             .send(interface.endpoint(), &self.device.report(interface));
-        self.pending[interface as usize] = Pending {
-            in_flight: true,
-            stale: false,
-        };
+        self.pending[interface as usize] = Pending::InFlight { stale: false };
     }
 }
 

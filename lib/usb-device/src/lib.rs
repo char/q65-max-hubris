@@ -3,6 +3,7 @@
 mod descriptors;
 
 use hid::{KEYBOARD_REPORT_SIZE, LedReport, Reports, descriptor};
+use util::Bytes;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -44,13 +45,6 @@ impl Interface {
             .into_iter()
             .find(|interface| interface.endpoint() == endpoint)
     }
-
-    fn from_endpoint_address(address: u16) -> Option<Self> {
-        let [number, high] = address.to_le_bytes();
-        (high == 0 && number & 0x80 != 0)
-            .then(|| Self::for_endpoint(number & 0x7f))
-            .flatten()
-    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -61,41 +55,17 @@ pub enum Protocol {
     Report = 1,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Response {
-    bytes: [u8; Self::MAX],
-    len: usize,
-}
+/// The longest thing we ever answer a control transfer with.
+const MAX_RESPONSE: usize = longest(&[
+    descriptors::DEVICE.len(),
+    descriptors::CONFIGURATION.len(),
+    descriptors::PRODUCT.len(),
+    descriptor::KEYBOARD.len(),
+    descriptor::CONSUMER.len(),
+    KEYBOARD_REPORT_SIZE,
+]);
 
-impl Response {
-    pub const MAX: usize = longest(&[
-        descriptors::DEVICE.len(),
-        descriptors::CONFIGURATION.len(),
-        descriptors::PRODUCT.len(),
-        descriptor::KEYBOARD.len(),
-        descriptor::CONSUMER.len(),
-        KEYBOARD_REPORT_SIZE,
-    ]);
-    pub const EMPTY: Self = Self::new(&[]);
-
-    const fn new(data: &[u8]) -> Self {
-        let mut bytes = [0; Self::MAX];
-        let mut i = 0;
-        while i < data.len() {
-            bytes[i] = data[i];
-            i += 1;
-        }
-        Self {
-            bytes,
-            len: data.len(),
-        }
-    }
-
-    fn truncated(mut self, requested: u16) -> Self {
-        self.len = self.len.min(usize::from(requested));
-        self
-    }
-}
+pub type Response = Bytes<MAX_RESPONSE>;
 
 const fn longest(lengths: &[usize]) -> usize {
     let mut max = 0;
@@ -109,19 +79,6 @@ const fn longest(lengths: &[usize]) -> usize {
     max
 }
 
-impl core::ops::Deref for Response {
-    type Target = [u8];
-    fn deref(&self) -> &[u8] {
-        &self.bytes[..self.len]
-    }
-}
-
-impl core::fmt::Debug for Response {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_list().entries(self.iter()).finish()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
     None,
@@ -133,7 +90,7 @@ pub enum Action {
     Stall,
 }
 
-const STATUS: Action = Action::Send(Response::EMPTY);
+const STATUS: Action = Action::Send(Response::new());
 
 #[derive(Default)]
 pub struct Device {
@@ -187,10 +144,12 @@ impl Device {
     pub fn report(&self, interface: Interface) -> Response {
         match (interface, self.protocol) {
             (Interface::Keyboard, Protocol::Boot) => {
-                Response::new(&self.reports.keyboard.to_boot())
+                Response::from_slice(&self.reports.keyboard.to_boot())
             }
-            (Interface::Keyboard, Protocol::Report) => Response::new(&self.reports.keyboard.0),
-            (Interface::Consumer, _) => Response::new(&[self.reports.consumer.0]),
+            (Interface::Keyboard, Protocol::Report) => {
+                Response::from_slice(&self.reports.keyboard.0)
+            }
+            (Interface::Consumer, _) => Response::from_slice(&[self.reports.consumer.0]),
         }
     }
 
@@ -204,7 +163,7 @@ impl Device {
             _ => self.standard_request(&setup),
         };
         match action {
-            Action::Send(response) => Action::Send(response.truncated(setup.length)),
+            Action::Send(response) => Action::Send(response.truncated(usize::from(setup.length))),
             other => other,
         }
     }
@@ -228,7 +187,7 @@ impl Device {
             }
             _ => return Action::Stall,
         };
-        Action::Send(Response::new(bytes).truncated(setup.length))
+        Action::Send(Response::from_slice(bytes).truncated(usize::from(setup.length)))
     }
 
     fn standard_request(&mut self, setup: &Setup) -> Action {
@@ -242,16 +201,19 @@ impl Device {
                 Action::Configure(self.configured)
             }
             (Recipient::Device, GET_CONFIGURATION) => {
-                Action::Send(Response::new(&[u8::from(self.configured)]))
+                Action::Send(Response::from_slice(&[u8::from(self.configured)]))
             }
-            (_, GET_STATUS) => Action::Send(Response::new(&[0, 0])),
+            (_, GET_STATUS) => Action::Send(Response::from_slice(&[0, 0])),
             (Recipient::Interface, GET_INTERFACE) if self.configured => {
-                Action::Send(Response::new(&[0]))
+                Action::Send(Response::from_slice(&[0]))
             }
             (Recipient::Interface, SET_INTERFACE) if self.configured => STATUS,
             (Recipient::Endpoint, CLEAR_FEATURE) if setup.value == ENDPOINT_HALT => {
-                match Interface::from_endpoint_address(setup.index) {
-                    Some(interface) if self.configured => Action::ResetEndpoint(interface),
+                let [address, high] = setup.index.to_le_bytes();
+                match Interface::for_endpoint(address & 0x7f) {
+                    Some(interface) if self.configured && high == 0 && address & 0x80 != 0 => {
+                        Action::ResetEndpoint(interface)
+                    }
                     _ => Action::Stall,
                 }
             }
@@ -272,10 +234,10 @@ impl Device {
                 Action::None
             }
             // always 0 for GET_IDLE (like ZMK/tinyusb)
-            (GET_IDLE, _) => Action::Send(Response::new(&[0])),
+            (GET_IDLE, _) => Action::Send(Response::from_slice(&[0])),
             (SET_IDLE, _) => STATUS,
             (GET_PROTOCOL, Interface::Keyboard) => {
-                Action::Send(Response::new(&[self.protocol as u8]))
+                Action::Send(Response::from_slice(&[self.protocol as u8]))
             }
             (SET_PROTOCOL, Interface::Keyboard) if setup.value <= 1 => {
                 self.protocol = if setup.value == 0 {

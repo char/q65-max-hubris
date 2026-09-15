@@ -21,15 +21,9 @@ enum Bits {
 }
 
 #[derive(Clone, Copy)]
-enum Direction {
-    Input,
-    Output,
-}
-
-#[derive(Clone, Copy)]
-struct Field {
-    direction: Direction,
-    bits: Bits,
+enum Field {
+    Input(Bits),
+    Output(Bits),
 }
 
 impl Bits {
@@ -39,22 +33,6 @@ impl Bits {
 
     const fn leds(first: Led, last: Led) -> Self {
         Self::Range(Page::Led, first as u8, last as u8)
-    }
-}
-
-impl Field {
-    const fn input(bits: Bits) -> Self {
-        Self {
-            direction: Direction::Input,
-            bits,
-        }
-    }
-
-    const fn output(bits: Bits) -> Self {
-        Self {
-            direction: Direction::Output,
-            bits,
-        }
     }
 }
 
@@ -68,10 +46,10 @@ const KEYBOARD_DESCRIPTOR: Descriptor = Descriptor {
     page: Page::GenericDesktop,
     usage: 0x06, // Keyboard
     fields: &[
-        Field::input(Bits::keys(Key::LeftControl, Key::RightGui)),
-        Field::input(Bits::keys(Key::A, Key::F24)),
-        Field::output(Bits::leds(Led::NumLock, Led::Kana)),
-        Field::output(Bits::Padding(3)),
+        Field::Input(Bits::keys(Key::LeftControl, Key::RightGui)),
+        Field::Input(Bits::keys(Key::A, Key::F24)),
+        Field::Output(Bits::leds(Led::NumLock, Led::Kana)),
+        Field::Output(Bits::Padding(3)),
     ],
 };
 
@@ -79,7 +57,7 @@ const CONSUMER_DESCRIPTOR: Descriptor = Descriptor {
     page: Page::Consumer,
     usage: 0x01, // Consumer Control
     fields: &[
-        Field::input(Bits::List(
+        Field::Input(Bits::List(
             Page::Consumer,
             &[
                 Consumer::PlayPause.usage(),
@@ -87,7 +65,7 @@ const CONSUMER_DESCRIPTOR: Descriptor = Descriptor {
                 Consumer::VolumeDown.usage(),
             ],
         )),
-        Field::input(Bits::Padding(5)),
+        Field::Input(Bits::Padding(5)),
     ],
 };
 
@@ -116,7 +94,8 @@ impl Descriptor {
         let mut len = 6 * 2 + 1;
         let mut i = 0;
         while i < self.fields.len() {
-            len += match self.fields[i].bits {
+            let (Field::Input(bits) | Field::Output(bits)) = self.fields[i];
+            len += match bits {
                 Bits::Range(..) => 5 * 2,
                 Bits::List(_, usages) => (usages.len() + 3) * 2,
                 Bits::Padding(_) => 2 * 2,
@@ -136,8 +115,11 @@ impl Descriptor {
         out.extend(&[REPORT_SIZE, 1]);
         let mut i = 0;
         while i < self.fields.len() {
-            let field = self.fields[i];
-            let (count, kind) = match field.bits {
+            let (bits, item) = match self.fields[i] {
+                Field::Input(bits) => (bits, INPUT),
+                Field::Output(bits) => (bits, OUTPUT),
+            };
+            let (count, kind) = match bits {
                 Bits::Range(page, min, max) => {
                     out.extend(&[USAGE_PAGE, page as u8]);
                     out.extend(&[USAGE_MINIMUM, min]);
@@ -156,11 +138,7 @@ impl Descriptor {
                 Bits::Padding(count) => (count, CONSTANT),
             };
             out.extend(&[REPORT_COUNT, count]);
-            let main = match field.direction {
-                Direction::Input => INPUT,
-                Direction::Output => OUTPUT,
-            };
-            out.extend(&[main, kind]);
+            out.extend(&[item, kind]);
             i += 1;
         }
         out.push(END_COLLECTION);

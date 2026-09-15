@@ -9,7 +9,7 @@
 
 use stm32f4::stm32f401 as pac;
 use userlib::hl::sleep_for;
-use util::Reg;
+use util::{Bytes, Reg};
 
 pub const MAX_PACKET: usize = 64;
 
@@ -26,23 +26,11 @@ pub enum Event {
     Reset,
     Setup([u8; 8]),
     /// Data, or a zero-length status packet, on endpoint 0.
-    Out(Packet),
+    Out(Bytes<MAX_PACKET>),
     /// The IN transfer on this endpoint was taken by the host.
     InComplete(u8),
     Suspend,
     Resume,
-}
-
-pub struct Packet {
-    bytes: [u8; MAX_PACKET],
-    len: usize,
-}
-
-impl core::ops::Deref for Packet {
-    type Target = [u8];
-    fn deref(&self) -> &[u8] {
-        &self.bytes[..self.len]
-    }
 }
 
 pub struct Otg {
@@ -52,7 +40,7 @@ pub struct Otg {
     /// done, and the core may pop several (a host retrying SETUP) before that; only the last one
     /// standing when the completion fires is real.
     setup: Option<[u8; 8]>,
-    out: Option<Packet>,
+    out: Option<Bytes<MAX_PACKET>>,
 }
 
 impl Otg {
@@ -228,28 +216,24 @@ impl Otg {
         const OUT_DATA: u8 = 0b0010;
         const SETUP_DATA: u8 = 0b0110;
         let status = self.global.grxstsp_device().read();
-        let mut packet = Packet {
-            bytes: [0; MAX_PACKET],
-            len: usize::from(status.bcnt().bits()),
-        };
         // Other statuses (global NAK, transfer complete markers) carry no data.
         if !matches!(status.pktsts().bits(), OUT_DATA | SETUP_DATA) {
             return;
         }
-        for word in 0..packet.len.div_ceil(4) {
+        let len = usize::from(status.bcnt().bits());
+        let mut packet = Bytes::new();
+        // Every word must be popped to keep the FIFO in step, even if it doesn't fit.
+        for word in 0..len.div_ceil(4) {
             let bytes = InEndpoint(0).fifo().read().to_le_bytes();
-            let offset = word * 4;
-            if offset < MAX_PACKET {
-                let end = (offset + 4).min(MAX_PACKET);
-                packet.bytes[offset..end].copy_from_slice(&bytes[..end - offset]);
-            }
+            let keep = len.min(MAX_PACKET).saturating_sub(word * 4).min(4);
+            packet.extend(&bytes[..keep]);
         }
         if status.epnum().bits() != 0 {
             return;
         }
         if status.pktsts().bits() == SETUP_DATA {
-            if packet.len == 8 {
-                self.setup = Some(packet.bytes[..8].try_into().unwrap());
+            if let Ok(setup) = <[u8; 8]>::try_from(&*packet) {
+                self.setup = Some(setup);
             }
         } else {
             self.out = Some(packet);

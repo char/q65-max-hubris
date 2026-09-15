@@ -18,10 +18,6 @@ const RED_CHANNEL: [[u8; COLUMNS]; ROWS] = [
     [0x3f, 0x3e, 0x3d, 0x3c, NO_LED, NO_LED, NO_LED, 0x38, NO_LED, NO_LED, 0x35, 0x34, 0x33, 0x32, 0x31, 0x30],
 ];
 
-fn driver(row: usize) -> usize {
-    usize::from(row >= 2)
-}
-
 // ripped from qmk
 const CIE1931: [u8; 256] = {
     let mut table = [0; 256];
@@ -86,9 +82,10 @@ impl Lighting {
     pub fn frame(&self, now: u64, caps_lock: bool) -> Frame {
         let mut frame = [[0; CHANNELS]; DRIVERS];
         let mut light = |row: usize, column: usize, (red, blue): (u8, u8)| {
+            let driver = usize::from(row >= 2);
             let channel = usize::from(RED_CHANNEL[row][column]);
-            frame[driver(row)][channel] = red;
-            frame[driver(row)][channel + 16] = blue;
+            frame[driver][channel] = red;
+            frame[driver][channel + 16] = blue;
         };
         for hit in self.hits.iter().flatten() {
             // 2ms per brightness fade step

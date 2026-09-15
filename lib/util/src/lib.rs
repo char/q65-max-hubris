@@ -1,5 +1,7 @@
 #![no_std]
 
+/// A fixed-capacity byte buffer, usable in const contexts.
+#[derive(Clone, Copy)]
 pub struct Bytes<const N: usize> {
     bytes: [u8; N],
     len: usize,
@@ -20,6 +22,13 @@ impl<const N: usize> Bytes<N> {
         }
     }
 
+    #[must_use]
+    pub const fn from_slice(data: &[u8]) -> Self {
+        let mut bytes = Self::new();
+        bytes.extend(data);
+        bytes
+    }
+
     pub const fn push(&mut self, byte: u8) {
         self.bytes[self.len] = byte;
         self.len += 1;
@@ -33,12 +42,41 @@ impl<const N: usize> Bytes<N> {
         }
     }
 
+    #[must_use]
+    pub const fn truncated(mut self, len: usize) -> Self {
+        if len < self.len {
+            self.len = len;
+        }
+        self
+    }
+
     /// # Panics
     /// If fewer than `N` bytes were written.
     #[must_use]
     pub const fn finish(self) -> [u8; N] {
         assert!(self.len == N);
         self.bytes
+    }
+}
+
+impl<const N: usize> core::ops::Deref for Bytes<N> {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+}
+
+impl<const N: usize> PartialEq for Bytes<N> {
+    fn eq(&self, other: &Self) -> bool {
+        **self == **other
+    }
+}
+
+impl<const N: usize> Eq for Bytes<N> {}
+
+impl<const N: usize> core::fmt::Debug for Bytes<N> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
