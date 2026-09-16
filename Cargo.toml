@@ -1,5 +1,5 @@
 [workspace]
-members = ["firmware/kernel", "lib/*", "tasks/*", "tools/xtask"]
+members = ["apps/q65-max", "lib/*", "tasks/*", "tools/xtask"]
 default-members = ["lib/*"]
 resolver = "2"
 
