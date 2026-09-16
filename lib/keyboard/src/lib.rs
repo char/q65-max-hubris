@@ -63,7 +63,7 @@ impl Encoder {
     pub fn update(&mut self, state: u8) -> Option<Rotation> {
         // Indexed by (previous << 2 | current): +1 for each clockwise transition, -1 for each
         // counter-clockwise one, 0 when nothing moved or both lines changed at once (a glitch).
-        const DELTA: [i8; 16] = [0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0];
+        const DELTA: [i8; 16] = [0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0];
         let state = state & 0b11;
         let previous = core::mem::replace(&mut self.previous, state);
         if previous ^ state == 0b11 {
@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn encoder_reports_once_per_detent_in_the_right_direction() {
         let mut encoder = Encoder::new(0b11);
-        let clockwise = [0b01, 0b00, 0b10, 0b11];
+        let clockwise = [0b10, 0b00, 0b01, 0b11];
         let mut turns = clockwise.iter().filter_map(|&s| encoder.update(s));
         assert_eq!(turns.next(), Some(Rotation::Clockwise));
         assert_eq!(turns.next(), None);
