@@ -104,7 +104,8 @@ pub fn scan() -> Matrix {
 }
 
 fn settle() {
-    cortex_m::asm::delay(48 * 10);
+    // cortex_m delays us for 3 cycles per "cycle" ??
+    cortex_m::asm::delay(48 * 10 / 3);
 }
 
 pub fn encoder_state() -> u8 {

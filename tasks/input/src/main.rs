@@ -53,11 +53,7 @@ impl NotificationHandler for Input {
         if let Some(rotation) = self.encoder.update(matrix::encoder_state()) {
             self.keymap.turn(rotation, send);
         }
-        // One scan per millisecond. If we ever fall behind, skip the missed ticks rather than
-        // scanning in a burst to catch up.
-        // The deadline must be in the future or an overrun can starve the RGB task.
-        let next = sys_get_timer().now + 1;
-        sys_set_timer(Some(next), notifications::TIMER_MASK);
+        sys_set_timer(Some(start + 1), notifications::TIMER_MASK);
     }
 }
 
