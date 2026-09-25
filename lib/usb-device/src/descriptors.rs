@@ -120,7 +120,7 @@ pub const CONFIGURATION: [u8; CONFIGURATION_LEN] = {
         2,    // interfaces
         1,    // this configuration's number
         0,    // no string
-        0x80, // bus powered, no remote wakeup
+        0xa0, // bus powered, remote wakeup
         250,  // 500 mA, in 2 mA units
     ];
     let mut out = Bytes::new();

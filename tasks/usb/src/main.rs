@@ -56,6 +56,9 @@ impl idl::InOrderUsbImpl for Usb {
             if reports.consumer != previous.consumer {
                 self.refresh(Interface::Consumer);
             }
+            if reports != previous && self.suspended && self.device.may_wake_host() {
+                self.otg.wake_host();
+            }
         }
         Ok(())
     }

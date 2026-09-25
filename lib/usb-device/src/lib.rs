@@ -100,11 +100,13 @@ pub struct Device {
     protocol: Protocol,
     leds: LedReport,
     awaiting_leds: bool,
+    remote_wakeup: bool,
 }
 
 // Standard requests
 const GET_STATUS: u8 = 0;
 const CLEAR_FEATURE: u8 = 1;
+const SET_FEATURE: u8 = 3;
 const SET_ADDRESS: u8 = 5;
 const GET_DESCRIPTOR: u8 = 6;
 const GET_CONFIGURATION: u8 = 8;
@@ -112,6 +114,7 @@ const SET_CONFIGURATION: u8 = 9;
 const GET_INTERFACE: u8 = 10;
 const SET_INTERFACE: u8 = 11;
 const ENDPOINT_HALT: u16 = 0;
+const DEVICE_REMOTE_WAKEUP: u16 = 1;
 // HID class requests
 const GET_REPORT: u8 = 1;
 const GET_IDLE: u8 = 2;
@@ -138,6 +141,12 @@ impl Device {
     #[must_use]
     pub fn leds(&self) -> LedReport {
         self.leds
+    }
+
+    /// Whether the host has allowed us to wake it from suspend.
+    #[must_use]
+    pub fn may_wake_host(&self) -> bool {
+        self.remote_wakeup
     }
 
     #[must_use]
@@ -203,7 +212,17 @@ impl Device {
             (Recipient::Device, GET_CONFIGURATION) => {
                 Action::Send(Response::from_slice(&[u8::from(self.configured)]))
             }
+            (Recipient::Device, GET_STATUS) => Action::Send(Response::from_slice(&[
+                u8::from(self.remote_wakeup) << 1,
+                0,
+            ])),
             (_, GET_STATUS) => Action::Send(Response::from_slice(&[0, 0])),
+            (Recipient::Device, SET_FEATURE | CLEAR_FEATURE)
+                if setup.value == DEVICE_REMOTE_WAKEUP =>
+            {
+                self.remote_wakeup = setup.request == SET_FEATURE;
+                STATUS
+            }
             (Recipient::Interface, GET_INTERFACE) if self.configured => {
                 Action::Send(Response::from_slice(&[0]))
             }

@@ -240,6 +240,13 @@ impl Otg {
         }
     }
 
+    /// Signal a suspended host to resume. The spec wants this held for 1–15 ms.
+    pub fn wake_host(&self) {
+        self.device.dctl.modify(|_, w| w.rwusig().set_bit());
+        sleep_for(2);
+        self.device.dctl.modify(|_, w| w.rwusig().clear_bit());
+    }
+
     pub fn set_address(&self, address: u8) {
         // Unlike the software-visible state change, the core wants this before the status IN.
         self.device
